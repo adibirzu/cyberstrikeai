@@ -92,7 +92,7 @@ async function loadToken() {
         }
         currentToken = localStorage.getItem('swagger_auth_token');
     } catch (e) {
-        console.error('加载token失败:', e);
+        console.error('Loading token failed:', e);
     }
 }
 
@@ -109,11 +109,11 @@ async function loadAPISpec() {
             }
             throw new Error(_t('apiDocs.errorLoadSpec') + response.status);
         }
-        
+
         apiSpec = await response.json();
         buildApiSpecTagToKey();
     } catch (error) {
-        console.error('加载API规范失败:', error);
+        console.error('Failed to load API standard:', error);
         showError(_t('apiDocs.errorLoadFailed') + error.message);
     }
 }
@@ -145,13 +145,13 @@ function renderAPIDocs() {
         showError(_t('apiDocs.errorSpecInvalid'));
         return;
     }
-    
+
     // 显示认证说明
     renderAuthInfo();
-    
+
     // 渲染侧边栏分组
     renderSidebar();
-    
+
     // 渲染API端点
     renderEndpoints();
 }
@@ -160,10 +160,10 @@ function renderAPIDocs() {
 function renderAuthInfo() {
     const authSection = document.getElementById('auth-info-section');
     if (!authSection) return;
-    
+
     // 显示认证说明部分
     authSection.style.display = 'block';
-    
+
     // 检查是否有token
     const tokenStatus = document.getElementById('token-status');
     if (currentToken && tokenStatus) {
@@ -188,7 +188,7 @@ function renderSidebar() {
             }
         });
     });
-    
+
     const groupList = document.getElementById('api-group-list');
     const allGroups = Array.from(groups).sort();
     while (groupList.children.length > 1) {
@@ -201,7 +201,7 @@ function renderSidebar() {
         li.innerHTML = `<a href="#" class="api-group-link" data-group="${escapeAttr(group)}">${escapeHtml(groupLabel)}</a>`;
         groupList.appendChild(li);
     });
-    
+
     // 绑定点击事件
     groupList.querySelectorAll('.api-group-link').forEach(link => {
         link.addEventListener('click', (e) => {
@@ -218,7 +218,7 @@ function renderSidebar() {
 function renderEndpoints(filterGroup = null) {
     const main = document.getElementById('api-docs-main');
     main.innerHTML = '';
-    
+
     const endpoints = [];
     Object.keys(apiSpec.paths).forEach(path => {
         Object.keys(apiSpec.paths[path]).forEach(method => {
@@ -233,7 +233,7 @@ function renderEndpoints(filterGroup = null) {
             }
         });
     });
-    
+
     // 按分组排序
     endpoints.sort((a, b) => {
         const tagA = a.tags && a.tags.length > 0 ? a.tags[0] : '';
@@ -241,12 +241,12 @@ function renderEndpoints(filterGroup = null) {
         if (tagA !== tagB) return tagA.localeCompare(tagB);
         return a.path.localeCompare(b.path);
     });
-    
+
     if (endpoints.length === 0) {
         main.innerHTML = '<div class="empty-state"><h3>' + escapeHtml(_t('apiDocs.noApis')) + '</h3><p>' + escapeHtml(_t('apiDocs.noEndpointsInGroup')) + '</p></div>';
         return;
     }
-    
+
     endpoints.forEach(endpoint => {
         main.appendChild(createEndpointCard(endpoint));
     });
@@ -256,7 +256,7 @@ function renderEndpoints(filterGroup = null) {
 function createEndpointCard(endpoint) {
     const card = document.createElement('div');
     card.className = 'api-endpoint';
-    
+
     const methodClass = endpoint.method.toLowerCase();
     const tags = endpoint.tags || [];
     const tagHtml = tags.map(tag => `<span class="api-tag">${escapeHtml(translateApiDocTag(tag))}</span>`).join('');
@@ -287,14 +287,14 @@ function createEndpointCard(endpoint) {
                     </div>
                 ` : endpoint.summary ? '' : '<div class="api-description">' + escapeHtml(_t('apiDocs.noDescription')) + '</div>'}
             </div>
-            
+
             ${renderParameters(endpoint)}
             ${renderRequestBody(endpoint)}
             ${renderResponses(endpoint)}
             ${renderTestSection(endpoint)}
         </div>
     `;
-    
+
     return card;
 }
 
@@ -302,7 +302,7 @@ function createEndpointCard(endpoint) {
 function renderParameters(endpoint) {
     const params = endpoint.parameters || [];
     if (params.length === 0) return '';
-    
+
     const requiredLabel = escapeHtml(_t('apiDocs.required'));
     const optionalLabel = escapeHtml(_t('apiDocs.optional'));
     const rows = params.map(param => {
@@ -313,7 +313,7 @@ function renderParameters(endpoint) {
             const escapedDesc = escapeHtml(param.description);
             descriptionHtml = escapedDesc.replace(/\n/g, '<br>');
         }
-        
+
         return `
             <tr>
                 <td><span class="api-param-name">${param.name}</span></td>
@@ -323,7 +323,7 @@ function renderParameters(endpoint) {
             </tr>
         `;
     }).join('');
-    
+
     const paramName = escapeHtml(_t('apiDocs.paramName'));
     const typeLabel = escapeHtml(_t('apiDocs.type'));
     const descLabel = escapeHtml(_t('apiDocs.description'));
@@ -352,10 +352,10 @@ function renderParameters(endpoint) {
 // 渲染请求体
 function renderRequestBody(endpoint) {
     if (!endpoint.requestBody) return '';
-    
+
     const content = endpoint.requestBody.content || {};
     let schema = content['application/json']?.schema || {};
-    
+
     // 处理 $ref 引用
     if (schema.$ref) {
         const refPath = schema.$ref.split('/');
@@ -364,7 +364,7 @@ function renderRequestBody(endpoint) {
             schema = apiSpec.components.schemas[refName];
         }
     }
-    
+
     // 渲染参数表格
     let paramsTable = '';
     if (schema.properties) {
@@ -373,10 +373,10 @@ function renderRequestBody(endpoint) {
         const optLabel = escapeHtml(_t('apiDocs.optional'));
         const rows = Object.keys(schema.properties).map(key => {
             const prop = schema.properties[key];
-            const required = requiredFields.includes(key) 
-                ? '<span class="api-param-required">' + reqLabel + '</span>' 
+            const required = requiredFields.includes(key)
+                ? '<span class="api-param-required">' + reqLabel + '</span>'
                 : '<span class="api-param-optional">' + optLabel + '</span>';
-            
+
             // 处理嵌套类型
             let typeDisplay = prop.type || 'object';
             if (prop.type === 'array' && prop.items) {
@@ -385,12 +385,12 @@ function renderRequestBody(endpoint) {
                 const refPath = prop.$ref.split('/');
                 typeDisplay = refPath[refPath.length - 1];
             }
-            
+
             // 处理枚举
             if (prop.enum) {
                 typeDisplay += ` (${prop.enum.join(', ')})`;
             }
-            
+
             // 处理描述文本，将换行符转换为<br>，但保持其他格式
             let descriptionHtml = '-';
             if (prop.description) {
@@ -399,7 +399,7 @@ function renderRequestBody(endpoint) {
                 // 将 \n 转换为 <br>，但不要转换已经转义的换行
                 descriptionHtml = escapedDesc.replace(/\n/g, '<br>');
             }
-            
+
             return `
                 <tr>
                     <td><span class="api-param-name">${escapeHtml(key)}</span></td>
@@ -410,7 +410,7 @@ function renderRequestBody(endpoint) {
                 </tr>
             `;
         }).join('');
-        
+
         if (rows) {
             const pName = escapeHtml(_t('apiDocs.paramName'));
             const tLabel = escapeHtml(_t('apiDocs.type'));
@@ -436,7 +436,7 @@ function renderRequestBody(endpoint) {
             `;
         }
     }
-    
+
     // 生成示例JSON
     let example = '';
     if (schema.example) {
@@ -464,7 +464,7 @@ function renderRequestBody(endpoint) {
         });
         example = JSON.stringify(exampleObj, null, 2);
     }
-    
+
     return `
         <div class="api-section">
             <div class="api-section-title">${escapeHtml(_t('apiDocs.sectionRequestBody'))}</div>
@@ -505,9 +505,9 @@ function renderResponses(endpoint) {
             </div>
         `;
     }).join('');
-    
+
     if (!responseItems) return '';
-    
+
     return `
         <div class="api-section">
             <div class="api-section-title">${escapeHtml(_t('apiDocs.sectionResponse'))}</div>
@@ -521,7 +521,7 @@ function renderTestSection(endpoint) {
     const method = endpoint.method.toUpperCase();
     const path = endpoint.path;
     const hasBody = endpoint.requestBody && ['POST', 'PUT', 'PATCH'].includes(method);
-    
+
     let bodyInput = '';
     if (hasBody) {
         const schema = endpoint.requestBody.content?.['application/json']?.schema || {};
@@ -536,7 +536,7 @@ function renderTestSection(endpoint) {
             });
             defaultBody = JSON.stringify(exampleObj, null, 2);
         }
-        
+
         const bodyInputId = `test-body-${escapeId(path)}-${method}`;
         bodyInput = `
             <div class="api-test-input-group">
@@ -545,7 +545,7 @@ function renderTestSection(endpoint) {
             </div>
         `;
     }
-    
+
     // 处理路径参数
     const pathParams = (endpoint.parameters || []).filter(p => p.in === 'path');
     let pathParamsInput = '';
@@ -560,7 +560,7 @@ function renderTestSection(endpoint) {
             `;
         }).join('');
     }
-    
+
     // 处理查询参数
     const queryParams = (endpoint.parameters || []).filter(p => p.in === 'query');
     let queryParamsInput = '';
@@ -573,16 +573,16 @@ function renderTestSection(endpoint) {
             return `
                 <div class="api-test-input-group">
                     <label>${escapeHtml(param.name)} ${required}</label>
-                    <input type="${param.schema?.type === 'number' || param.schema?.type === 'integer' ? 'number' : 'text'}" 
-                           id="${escapeAttr(inputId)}" 
-                           placeholder="${escapeAttr(placeholder)}" 
+                    <input type="${param.schema?.type === 'number' || param.schema?.type === 'integer' ? 'number' : 'text'}"
+                           id="${escapeAttr(inputId)}"
+                           placeholder="${escapeAttr(placeholder)}"
                            value="${escapeAttr(defaultValue)}"
                            ${param.required ? 'required' : ''}>
                 </div>
             `;
         }).join('');
     }
-    
+
     const testSectionTitle = escapeHtml(_t('apiDocs.testSection'));
     const queryParamsTitle = escapeHtml(_t('apiDocs.queryParams'));
     const sendRequestLabel = escapeHtml(_t('apiDocs.sendRequest'));
@@ -630,11 +630,11 @@ async function testAPI(method, path, operationId) {
     const resultId = `test-result-${escapeId(path)}-${method}`;
     const resultDiv = document.getElementById(resultId);
     if (!resultDiv) return;
-    
+
     resultDiv.style.display = 'block';
     resultDiv.className = 'api-test-result loading';
     resultDiv.textContent = _t('apiDocs.sendingRequest');
-    
+
     try {
         // 替换路径参数
         let actualPath = path;
@@ -649,12 +649,12 @@ async function testAPI(method, path, operationId) {
                 throw new Error(_t('apiDocs.errorPathParamRequired', { name: paramName }));
             }
         });
-        
+
         // 确保路径以/api开头（如果OpenAPI规范中的路径不包含/api）
         if (!actualPath.startsWith('/api') && !actualPath.startsWith('http')) {
             actualPath = '/api' + actualPath;
         }
-        
+
         // 构建查询参数
         const queryParams = [];
         const endpointSpec = apiSpec.paths[path]?.[method.toLowerCase()];
@@ -669,12 +669,12 @@ async function testAPI(method, path, operationId) {
                 }
             });
         }
-        
+
         // 添加查询字符串
         if (queryParams.length > 0) {
             actualPath += (actualPath.includes('?') ? '&' : '?') + queryParams.join('&');
         }
-        
+
         // 构建请求选项
         const options = {
             method: method,
@@ -682,14 +682,14 @@ async function testAPI(method, path, operationId) {
                 'Content-Type': 'application/json',
             }
         };
-        
+
         // 添加token
         if (currentToken) {
             options.headers['Authorization'] = 'Bearer ' + currentToken;
         } else {
             throw new Error(_t('apiDocs.errorTokenRequired'));
         }
-        
+
         // 添加请求体
         if (['POST', 'PUT', 'PATCH'].includes(method)) {
             const bodyInputId = `test-body-${escapeId(path)}-${method}`;
@@ -702,22 +702,22 @@ async function testAPI(method, path, operationId) {
                 }
             }
         }
-        
+
         // 发送请求
         const response = await fetch(actualPath, options);
         const responseText = await response.text();
-        
+
         let responseData;
         try {
             responseData = JSON.parse(responseText);
         } catch {
             responseData = responseText;
         }
-        
+
         // 显示结果
         resultDiv.className = response.ok ? 'api-test-result success' : 'api-test-result error';
-        resultDiv.textContent = `状态码: ${response.status} ${response.statusText}\n\n${typeof responseData === 'string' ? responseData : JSON.stringify(responseData, null, 2)}`;
-        
+        resultDiv.textContent = `Status code: ${response.status} ${response.statusText}\n\n${typeof responseData === 'string' ? responseData : JSON.stringify(responseData, null, 2)}`;
+
     } catch (error) {
         resultDiv.className = 'api-test-result error';
         resultDiv.textContent = _t('apiDocs.requestFailed') + error.message;
@@ -747,12 +747,12 @@ function copyCurlCommand(event, method, path) {
                 actualPath = actualPath.replace(param, encodeURIComponent(input.value));
             }
         });
-        
+
         // 确保路径以/api开头
         if (!actualPath.startsWith('/api') && !actualPath.startsWith('http')) {
             actualPath = '/api' + actualPath;
         }
-        
+
         // 构建查询参数
         const queryParams = [];
         const endpointSpec = apiSpec.paths[path]?.[method.toLowerCase()];
@@ -765,29 +765,29 @@ function copyCurlCommand(event, method, path) {
                 }
             });
         }
-        
+
         // 添加查询字符串
         if (queryParams.length > 0) {
             actualPath += (actualPath.includes('?') ? '&' : '?') + queryParams.join('&');
         }
-        
+
         // 构建完整的URL
         const baseUrl = window.location.origin;
         const fullUrl = baseUrl + actualPath;
-        
+
         // 构建curl命令
         let curlCommand = `curl -X ${method.toUpperCase()} "${fullUrl}"`;
-        
+
         // 添加请求头
         curlCommand += ` \\\n  -H "Content-Type: application/json"`;
-        
+
         // 添加Authorization头
         if (currentToken) {
             curlCommand += ` \\\n  -H "Authorization: Bearer ${currentToken}"`;
         } else {
             curlCommand += ` \\\n  -H "Authorization: Bearer YOUR_TOKEN_HERE"`;
         }
-        
+
         // 添加请求体（如果有）
         if (['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {
             const bodyInputId = `test-body-${escapeId(path)}-${method}`;
@@ -807,7 +807,7 @@ function copyCurlCommand(event, method, path) {
                 }
             }
         }
-        
+
         // 复制到剪贴板
         const button = event ? event.target.closest('button') : null;
         navigator.clipboard.writeText(curlCommand).then(() => {
@@ -824,7 +824,7 @@ function copyCurlCommand(event, method, path) {
                 alert(_t('apiDocs.curlCopied'));
             }
         }).catch(err => {
-            console.error('复制失败:', err);
+            console.error('Copying failed:', err);
             // 如果clipboard API失败，使用fallback方法
             const textarea = document.createElement('textarea');
             textarea.value = curlCommand;
@@ -851,9 +851,9 @@ function copyCurlCommand(event, method, path) {
             }
             document.body.removeChild(textarea);
         });
-        
+
     } catch (error) {
-        console.error('生成curl命令失败:', error);
+        console.error('Generate curl Command failed:', error);
         alert(_t('apiDocs.curlGenFailed') + error.message);
     }
 }
@@ -861,12 +861,12 @@ function copyCurlCommand(event, method, path) {
 // 格式化描述文本（处理markdown格式）
 function formatDescription(text) {
     if (!text) return '';
-    
+
     // 先提取代码块（避免代码块内的markdown被处理）
     let formatted = text;
     const codeBlocks = [];
     let codeBlockIndex = 0;
-    
+
     // 提取代码块（支持语言标识符，如 ```json 或 ```javascript）
     formatted = formatted.replace(/```(\w+)?\s*\n?([\s\S]*?)```/g, (match, lang, code) => {
         const placeholder = `__CODE_BLOCK_${codeBlockIndex}__`;
@@ -877,7 +877,7 @@ function formatDescription(text) {
         codeBlockIndex++;
         return placeholder;
     });
-    
+
     // 提取行内代码（避免行内代码内的markdown被处理）
     const inlineCodes = [];
     let inlineCodeIndex = 0;
@@ -887,10 +887,10 @@ function formatDescription(text) {
         inlineCodeIndex++;
         return placeholder;
     });
-    
+
     // 转义HTML（但保留占位符）
     formatted = escapeHtml(formatted);
-    
+
     // 恢复行内代码（需要转义，因为占位符已经被转义了）
     inlineCodes.forEach((code, index) => {
         formatted = formatted.replace(
@@ -898,7 +898,7 @@ function formatDescription(text) {
             `<code class="inline-code">${escapeHtml(code)}</code>`
         );
     });
-    
+
     // 恢复代码块（代码块内容已经转义过，直接使用）
     codeBlocks.forEach((block, index) => {
         const langLabel = block.lang ? `<span class="code-lang">${escapeHtml(block.lang)}</span>` : '';
@@ -908,35 +908,35 @@ function formatDescription(text) {
             `<pre class="code-block">${langLabel}<code>${escapeHtml(block.code)}</code></pre>`
         );
     });
-    
+
     // 处理标题（### 标题）
     formatted = formatted.replace(/^###\s+(.+)$/gm, '<h3 class="md-h3">$1</h3>');
     formatted = formatted.replace(/^##\s+(.+)$/gm, '<h2 class="md-h2">$1</h2>');
     formatted = formatted.replace(/^#\s+(.+)$/gm, '<h1 class="md-h1">$1</h1>');
-    
+
     // 处理加粗文本（**text** 或 __text__）
     formatted = formatted.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
     formatted = formatted.replace(/__([^_]+?)__/g, '<strong>$1</strong>');
-    
+
     // 处理斜体（*text* 或 _text_，但不与加粗冲突）
     formatted = formatted.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
     formatted = formatted.replace(/(?<!_)_([^_\n]+?)_(?!_)/g, '<em>$1</em>');
-    
+
     // 处理链接 [text](url)
     formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="md-link">$1</a>');
-    
+
     // 处理列表项（有序和无序）
     const lines = formatted.split('\n');
     const result = [];
     let inUnorderedList = false;
     let inOrderedList = false;
     let orderedListStart = 1;
-    
+
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         const unorderedMatch = line.match(/^[-*]\s+(.+)$/);
         const orderedMatch = line.match(/^\d+\.\s+(.+)$/);
-        
+
         if (unorderedMatch) {
             if (inOrderedList) {
                 result.push('</ol>');
@@ -975,27 +975,27 @@ function formatDescription(text) {
             }
         }
     }
-    
+
     if (inUnorderedList) {
         result.push('</ul>');
     }
     if (inOrderedList) {
         result.push('</ol>');
     }
-    
+
     formatted = result.join('\n');
-    
+
     // 处理段落（连续的空行分隔段落）
     formatted = formatted.replace(/(<br>\s*){2,}/g, '</p><p class="md-paragraph">');
     formatted = '<p class="md-paragraph">' + formatted + '</p>';
-    
+
     // 清理多余的<br>标签（在块级元素前后）
     formatted = formatted.replace(/(<\/?(h[1-6]|ul|ol|li|pre|p)[^>]*>)\s*<br>/gi, '$1');
     formatted = formatted.replace(/<br>\s*(<\/?(h[1-6]|ul|ol|li|pre|p)[^>]*>)/gi, '$1');
-    
+
     // 将剩余的单个换行符转换为<br>（但避免在块级元素内）
     formatted = formatted.replace(/\n(?!<\/?(h[1-6]|ul|ol|li|pre|p|code))/g, '<br>');
-    
+
     return formatted;
 }
 
@@ -1028,14 +1028,14 @@ function toggleDescription(button) {
     const icon = button.querySelector('.description-toggle-icon');
     const detail = button.parentElement.querySelector('.api-description-detail');
     const span = button.querySelector('span');
-    
+
     if (detail.style.display === 'none') {
         detail.style.display = 'block';
         icon.style.transform = 'rotate(180deg)';
-        span.textContent = typeof window.t === 'function' ? window.t('apiDocs.hideDetailDesc') : '隐藏详细说明';
+        span.textContent = typeof window.t === 'function' ? window.t('apiDocs.hideDetailDesc') : 'Hide details';
     } else {
         detail.style.display = 'none';
         icon.style.transform = 'rotate(0deg)';
-        span.textContent = typeof window.t === 'function' ? window.t('apiDocs.viewDetailDesc') : '查看详细说明';
+        span.textContent = typeof window.t === 'function' ? window.t('apiDocs.viewDetailDesc') : 'View details';
     }
 }

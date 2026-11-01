@@ -1,59 +1,40 @@
 name: "checkov"
 command: "checkov"
 enabled: true
-short_description: "基础设施即代码安全扫描工具"
+short_description: "Scan infrastructure-as-code configuration with Checkov"
 description: |
-  Checkov是一个静态代码分析工具，用于基础设施即代码（IaC）的安全扫描。
+  Scan infrastructure-as-code configuration with Checkov.
 
-  **主要功能：**
-  - 支持多种IaC框架（Terraform, CloudFormation, Kubernetes等）
-  - 数百个内置策略
-  - 自定义策略支持
-  - CI/CD集成
-
-  **使用场景：**
-  - IaC安全扫描
-  - 云配置审计
-  - 安全策略检查
-  - 合规性检查
+  Use the parameters below to select the target and native options. Additional native arguments are supported where exposed by this recipe.
 parameters:
   - name: "directory"
     type: "string"
-    description: "要扫描的目录"
+    description: "Directory to scan. Native option: -d. Default: .."
     required: false
     flag: "-d"
     format: "flag"
     default: "."
   - name: "framework"
     type: "string"
-    description: "要扫描的框架（terraform, cloudformation, kubernetes等）"
+    description: "Infrastructure framework selection. Native option: --framework."
     required: false
     flag: "--framework"
     format: "flag"
   - name: "check"
     type: "string"
-    description: "要运行的特定检查"
+    description: "Check identifiers to run. Native option: --check."
     required: false
     flag: "--check"
     format: "flag"
   - name: "output_format"
     type: "string"
-    description: "输出格式（json, yaml, cli）"
+    description: "Output format. Native option: --output. Default: json."
     required: false
     flag: "--output"
     format: "flag"
     default: "json"
   - name: "additional_args"
     type: "string"
-    description: |
-      额外的checkov参数。用于传递未在参数列表中定义的checkov选项。
-
-      **示例值：**
-      - 根据工具特性添加常用参数示例
-
-      **注意事项：**
-      - 多个参数用空格分隔
-      - 确保参数格式正确，避免命令注入
-      - 此参数会直接追加到命令末尾
+    description: "Additional native command-line arguments, appended according to this recipe."
     required: false
     format: "positional"

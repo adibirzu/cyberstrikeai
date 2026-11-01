@@ -31,8 +31,8 @@ func (db *DB) DeleteHitlInterruptLogsByIDs(ids []string) (int64, error) {
 	}
 	res, err := db.Exec(q, args...)
 	if err != nil {
-		db.logger.Error("批量删除人机协同审计日志失败", zap.Error(err), zap.Int("count", len(clean)))
-		return 0, fmt.Errorf("批量删除人机协同审计日志失败: %w", err)
+		db.logger.Error("Batch deletion of humans working with audit log failed", zap.Error(err), zap.Int("count", len(clean)))
+		return 0, fmt.Errorf("Batch deletion of human co-audit log failed: %w", err)
 	}
 	n, _ := res.RowsAffected()
 	return n, nil
@@ -50,8 +50,8 @@ func (db *DB) DeleteHitlInterruptLogsMatching(whereSQL string, args []interface{
 	q := `DELETE FROM hitl_interrupts ` + whereSQL
 	res, err := db.Exec(q, args...)
 	if err != nil {
-		db.logger.Error("清空人机协同审计日志失败", zap.Error(err))
-		return 0, fmt.Errorf("清空人机协同审计日志失败: %w", err)
+		db.logger.Error("The clearance machine failed to work with the audit log.", zap.Error(err))
+		return 0, fmt.Errorf("Quaker co-audit log failed: %w", err)
 	}
 	n, _ := res.RowsAffected()
 	return n, nil
@@ -67,8 +67,8 @@ func (db *DB) PurgeHitlInterruptLogsBefore(cutoff time.Time) (int64, error) {
 		cutoff.UTC().Format(time.RFC3339),
 	)
 	if err != nil {
-		db.logger.Error("清理过期人机协同审计日志失败", zap.Error(err))
-		return 0, fmt.Errorf("清理过期人机协同审计日志失败: %w", err)
+		db.logger.Error("Failed to clean up expired aircraft working with audit logs", zap.Error(err))
+		return 0, fmt.Errorf("Failed to clean expired machine in conjunction with audit log: %w", err)
 	}
 	n, _ := res.RowsAffected()
 	return n, nil

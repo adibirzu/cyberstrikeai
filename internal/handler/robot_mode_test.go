@@ -18,7 +18,7 @@ func TestRobotModeSwitch(t *testing.T) {
 	if got := h.getAgentMode("lark", "user-1"); got != "plan_execute" {
 		t.Fatalf("mode = %q, want plan_execute", got)
 	}
-	if got := h.cmdModes("lark", "user-1"); !strings.Contains(got, "当前模式: Plan-Execute") {
+	if got := h.cmdModes("lark", "user-1"); !strings.Contains(got, "Current mode: Plan-Execute") {
 		t.Fatalf("unexpected modes response: %s", got)
 	}
 }
@@ -26,7 +26,7 @@ func TestRobotModeSwitch(t *testing.T) {
 func TestRobotModeRejectsUnavailableMultiAgent(t *testing.T) {
 	h := NewRobotHandler(&config.Config{}, nil, nil, zap.NewNop())
 
-	if got := h.cmdSwitchMode("lark", "user-1", "deep"); !strings.Contains(got, "启用 Eino 多代理") {
+	if got := h.cmdSwitchMode("lark", "user-1", "deep"); !strings.Contains(got, "enable Eino multi-agent") {
 		t.Fatalf("unexpected rejection: %s", got)
 	}
 	if got := h.getAgentMode("lark", "user-1"); got != "eino_single" {
@@ -74,10 +74,10 @@ func TestRobotBestPracticeCommandPermissions(t *testing.T) {
 func TestRobotConfirmationCanBeCancelled(t *testing.T) {
 	h := NewRobotHandler(&config.Config{}, nil, nil, zap.NewNop())
 	h.setPendingConfirmation("lark", "user-1", "delete_conversation", "conv-1")
-	if got := h.cmdCancelConfirmation("lark", "user-1"); got != "已取消待确认操作。" {
+	if got := h.cmdCancelConfirmation("lark", "user-1"); got != "Pending confirmation cancelled." {
 		t.Fatalf("unexpected cancel response: %s", got)
 	}
-	if got := h.cmdConfirm("lark", "user-1"); !strings.Contains(got, "没有待确认操作") {
+	if got := h.cmdConfirm("lark", "user-1"); !strings.Contains(got, "no pending operation to confirm") {
 		t.Fatalf("confirmation survived cancellation: %s", got)
 	}
 }
@@ -92,10 +92,42 @@ func TestRobotDoctorSeparatesInternalToolsFromHTTPMCP(t *testing.T) {
 	}, nil, nil, zap.NewNop())
 
 	got := h.cmdDoctor()
-	if !strings.Contains(got, "内置 MCP 工具: 1/2 个已启用") {
+	if !strings.Contains(got, "Built-in MCP tools: 1/2 enabled") {
 		t.Fatalf("internal tool status missing: %s", got)
 	}
-	if !strings.Contains(got, "HTTP MCP 服务: 已关闭") {
+	if !strings.Contains(got, "HTTP MCP service: Disabled") {
 		t.Fatalf("HTTP MCP status missing: %s", got)
+	}
+}
+
+func TestLegacyConfirmationCannotCreateOrStealPendingAuthority(t *testing.T) {
+	h := NewRobotHandler(&config.Config{}, nil, nil, zap.NewNop())
+	for _, text := range []string{"确认", "confirm"} {
+		got, recognized := h.handleRobotCommand("lark", "outsider", text)
+		if !recognized || !strings.Contains(got, "no pending operation to confirm") {
+			t.Fatalf("confirmation created an action: %q %q", text, got)
+		}
+	}
+	h.setPendingConfirmation("lark", "owner", "invalid-fixture-action", "fixture")
+	if got := h.cmdConfirm("lark", "outsider"); !strings.Contains(got, "no pending operation to confirm") {
+		t.Fatalf("cross-user confirmation: %s", got)
+	}
+	h.mu.Lock()
+	_, preserved := h.pendingConfirmations[h.sessionKey("lark", "owner")]
+	h.mu.Unlock()
+	if !preserved {
+		t.Fatal("outsider consumed owner's pending action")
+	}
+	// Confirmation is only a pending-action selector. The selected action must
+	// re-resolve native identity/resource authority; text alone cannot grant it.
+	h.setPendingConfirmation("lark", "outsider", "delete_conversation", "fixture")
+	if got := h.cmdConfirm("lark", "outsider"); !strings.Contains(got, "no right to be deleted") {
+		t.Fatalf("pending text bypassed native identity: %s", got)
+	}
+	for _, text := range []string{"确认", "confirm"} {
+		permission, recognized := robotCommandPermission(text)
+		if !recognized || permission != "" {
+			t.Fatalf("confirmation changed its pending-action contract: %q %q %v", text, permission, recognized)
+		}
 	}
 }

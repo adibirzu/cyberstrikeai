@@ -147,14 +147,14 @@ function renderHitlPagination(containerId, state, goPageFnName, pageSizeChangeFn
     const start = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
     const end = total === 0 ? 0 : Math.min(currentPage * pageSize, total);
     const infoText = hitlPaginationT('paginationInfo', { start: start, end: end, total: total },
-        '显示 ' + start + '-' + end + ' / 共 ' + total + ' 条记录');
-    const perPageLabel = hitlPaginationT('perPageLabel', null, '每页显示');
-    const firstPageLabel = hitlPaginationT('firstPage', null, '首页');
-    const prevPageLabel = hitlPaginationT('prevPage', null, '上一页');
+        'Show ' + start + '-' + end + ' / Total ' + total + ' Article records');
+    const perPageLabel = hitlPaginationT('perPageLabel', null, 'Rows per page');
+    const firstPageLabel = hitlPaginationT('firstPage', null, 'First');
+    const prevPageLabel = hitlPaginationT('prevPage', null, 'Previous');
     const pageInfoText = hitlPaginationT('pageInfo', { page: currentPage, total: totalPages },
-        '第 ' + currentPage + ' / ' + totalPages + ' 页');
-    const nextPageLabel = hitlPaginationT('nextPage', null, '下一页');
-    const lastPageLabel = hitlPaginationT('lastPage', null, '末页');
+        'I don\'t think so. ' + currentPage + ' / ' + totalPages + ' Page');
+    const nextPageLabel = hitlPaginationT('nextPage', null, 'Next');
+    const lastPageLabel = hitlPaginationT('lastPage', null, 'Last');
     const disabledFirst = currentPage === 1 || total === 0;
     const disabledLast = currentPage >= totalPages || total === 0;
     let html = '<div class="monitor-pagination">';
@@ -626,7 +626,7 @@ async function syncHitlConfigFromServer(conversationId) {
                 enabled: true,
                 timeoutSeconds: merged.timeoutSeconds
             }).catch(function (err) {
-                console.warn('HITL 会话配置同步到服务器失败（将仅保留本地 UI）:', err);
+                console.warn('HITL session configuration failed to synchronize to server (only local UI will be kept):', err);
             });
         }
     }
@@ -636,7 +636,7 @@ async function syncHitlConfigFromServer(conversationId) {
             await saveHitlConversationConfig(conversationId, merged);
             markLegacyHitlTimeoutMigrated(conversationId);
         } catch (err) {
-            console.warn('HITL 旧会话等待时限迁移失败，将在下次加载时重试:', err);
+            console.warn('The old HITL session has failed to move the time limit, and will be repeated at the next loading:', err);
         }
     } else if (normalizeHitlTimeoutSeconds(merged.timeoutSeconds, 0) > 0) {
         markLegacyHitlTimeoutMigrated(conversationId);

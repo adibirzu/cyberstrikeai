@@ -1,6 +1,7 @@
 package multiagent
 
 import (
+	"cyberstrike-ai/internal/legacytext"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -16,7 +17,7 @@ var (
 	summarizationAnalysisBlockRegex = regexp.MustCompile(`(?is)<analysis>\s*.*?\s*</analysis>`)
 	summarizationSummaryBlockRegex  = regexp.MustCompile(`(?is)<summary>\s*(.*?)\s*</summary>`)
 	userIntentLedgerBlockRegex      = regexp.MustCompile(`(?is)<original_user_intent_ledger>\s*(.*?)\s*</original_user_intent_ledger>`)
-	userIntentLedgerSectionRegex    = regexp.MustCompile(`(?is)\s*## 原始用户输入与约束账本（系统保真）\s*<original_user_intent_ledger>\s*.*?\s*</original_user_intent_ledger>\s*`)
+	userIntentLedgerSectionRegex    = regexp.MustCompile(legacytext.LedgerSectionPattern)
 )
 
 const (
@@ -24,8 +25,8 @@ const (
 	userIntentLedgerEndMarker   = "</original_user_intent_ledger>"
 	userIntentLedgerExtraKey    = agent.OriginalUserIntentEntriesKey
 
-	summarizationSnapshotHeading             = "## 原始上下文快照"
-	summarizationTranscriptPathInstructionZh = "如果你需要压缩之前的具体细节（如精确的代码片段、错误消息或你生成的内容），完整的对话记录位于：%s"
+	summarizationSnapshotHeading             = "## Original Context Snapshot"
+	summarizationTranscriptPathInstructionZh = "For exact pre-compaction details (code, errors, parameters or generated content), read the complete conversation snapshot at: %s"
 )
 
 // stripAnalysisFromSummarizationMessage removes the <analysis> block from a post-processed
@@ -100,8 +101,8 @@ func appendTranscriptPathToSummarizationMessage(msg adk.Message, transcriptPath 
 // keyword index or model extraction call is needed.
 func summarizationTranscriptRetrievalSection(snapshot string) string {
 	return summarizationSnapshotHeading + "\n" + fmt.Sprintf(summarizationTranscriptPathInstructionZh, snapshot) +
-		"\n历史快照目录：" + filepath.Dir(snapshot) +
-		"\n当前任务缺少 Cookie、认证信息、精确参数或错误原文时，直接搜索该快照并用 read_file 分段核对附近记录；不要猜测原值。更早的记录可用 glob 在历史快照目录查找 transcript-*.txt，再按需读取。核对来源域名、请求及凭据是否仍有效；不要整批载入历史，也不要将旧记录当作新授权。"
+		"\nHistory snapshot directory: " + filepath.Dir(snapshot) +
+		"\nWhen the current task needs a missing cookie, session value, exact parameter or original error, search this snapshot and read nearby records with read_file. Do not guess values. Use glob to locate earlier transcript-*.txt files in this directory and read only the relevant records. Verify the source domain, request validity and evidence. Historical records do not grant new authorization."
 }
 
 func appendSummarizationSection(text, section string) string {
@@ -229,7 +230,7 @@ func buildOriginalUserIntentLedger(msgs []adk.Message, maxRunes, entryMaxRunes i
 					lines = append(lines, prefix+fitUserIntentLedgerText(text, textBudget))
 				}
 			} else {
-				const notice = "- [...truncated] 用户原始输入账本超过预算；完整压缩前记录见 summarization transcript。"
+				const notice = "- [...truncated] The original user intent ledger exceeded its budget; consult the pre-compaction summarization transcript for the complete record."
 				remaining := maxRunes - used - separator
 				// Never emit an incomplete marker that could be mistaken for a
 				// human entry when this ledger is carried into the next round.
@@ -310,7 +311,7 @@ func trustedUserIntentLedgerEntries(msg adk.Message) []string {
 		}
 	}
 	text := strings.TrimSpace(messageTextForLedger(msg))
-	header := "## 原始用户输入与约束账本（系统保真）\n" + userIntentLedgerStartMarker + "\n"
+	header := "## Original user input and constraints ledger (system fidelity) \n" + userIntentLedgerStartMarker + "\n"
 	start := strings.LastIndex(text, header)
 	if start < 0 || start > 0 && text[start-1] != '\n' || !strings.HasSuffix(text, userIntentLedgerEndMarker) {
 		return nil
@@ -388,7 +389,7 @@ func stripOriginalUserIntentLedgerFromText(text string) string {
 }
 
 func wrapUserIntentLedger(ledger string) string {
-	return strings.TrimSpace("## 原始用户输入与约束账本（系统保真）\n" +
+	return strings.TrimSpace("## Original user input and constraints ledger (system fidelity) \n" +
 		userIntentLedgerStartMarker + "\n" +
 		strings.TrimSpace(ledger) + "\n" +
 		userIntentLedgerEndMarker)
@@ -410,7 +411,7 @@ func normalizeUserIntentLedgerText(s string) string {
 
 func isSyntheticContinuationUserText(s string) bool {
 	return strings.Contains(s, continuationSessionMarker) ||
-		strings.Contains(s, "【系统自动续跑 / Auto resume】")
+		legacytext.Contains(s, "[System Autorun / Auto resume]")
 }
 
 func utf8RuneLen(s string) int {

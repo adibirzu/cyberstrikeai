@@ -63,7 +63,7 @@ func TestEnsureSchemaCancelsPendingInterruptsAfterRestart(t *testing.T) {
 		Scan(&content, &updatedAt); err != nil {
 		t.Fatalf("query reconciled assistant message: %v", err)
 	}
-	if content != "任务因服务重启已中断，审批已取消。" {
+	if content != "The task was interrupted by the resumption of services and approval cancelled." {
 		t.Fatalf("assistant content=%q, want restart interruption notice", content)
 	}
 	if !updatedAt.Valid {
@@ -177,9 +177,9 @@ func TestEnsureSchemaFinalizesOnlyHistoricalPlaceholdersWithTerminalEvidence(t *
 			t.Fatalf("message %s event=%q, want %q", messageID, eventType, wantEvent)
 		}
 	}
-	assertTerminal(superseded.ID, "任务因服务重启已中断。", "cancelled")
-	assertTerminal(timedOut.ID, "任务等待审批超时，已自动拒绝。", "timeout")
-	assertTerminal(rejected.ID, "任务审批已拒绝，执行已停止。", "cancelled")
+	assertTerminal(superseded.ID, "The mission was interrupted by the resumption of services.", "cancelled")
+	assertTerminal(timedOut.ID, "Tasks awaiting approval are overtime and are automatically rejected.", "timeout")
+	assertTerminal(rejected.ID, "Mandate approval was refused and execution stopped.", "cancelled")
 
 	var activeContent string
 	if err := db.QueryRow(`SELECT content FROM messages WHERE id = ?`, potentiallyActive.ID).Scan(&activeContent); err != nil {

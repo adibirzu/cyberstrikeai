@@ -102,8 +102,8 @@
         const number = index + 1;
         const prefix = typeof window.t === 'function'
             ? window.t('chat.turnNumber', { number: number })
-            : '第 ' + number + ' 轮';
-        const safePrefix = prefix && prefix !== 'chat.turnNumber' ? prefix : ('第 ' + number + ' 轮');
+            : 'I don\'t think so. ' + number + ' Wheel';
+        const safePrefix = prefix && prefix !== 'chat.turnNumber' ? prefix : ('I don\'t think so. ' + number + ' Wheel');
         return question ? safePrefix + '：' + question : safePrefix;
     }
 
@@ -121,8 +121,8 @@
         if (!assistant && assistants.length) assistant = assistants[assistants.length - 1];
         let summary = trimPreviewText(messagePreviewText(assistant), 220);
         if (!summary) {
-            summary = typeof window.t === 'function' ? window.t('chat.turnPending') : '正在处理…';
-            if (!summary || summary === 'chat.turnPending') summary = '正在处理…';
+            summary = typeof window.t === 'function' ? window.t('chat.turnPending') : 'Processing…';
+            if (!summary || summary === 'chat.turnPending') summary = 'Processing…';
         }
         return { question: question, summary: summary };
     }

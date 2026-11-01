@@ -340,8 +340,8 @@ test('消息气泡内部流式增高时仅在跟随模式继续粘底', () => {
 });
 
 test('页面在任务补流脚本之前加载智能滚动控制器', () => {
-    const scrollIndex = html.indexOf('/static/js/chat-scroll.js?v=20260815-1');
-    const monitorIndex = html.indexOf('/static/js/monitor.js?v=20261011-token-usage');
+    const scrollIndex = html.indexOf('/static/js/chat-scroll.js?v=20261101-pentforge-english');
+    const monitorIndex = html.indexOf('/static/js/monitor.js?v=20261101-pentforge-english');
 
     assert.notEqual(scrollIndex, -1);
     assert.notEqual(monitorIndex, -1);
@@ -371,7 +371,7 @@ test('任务计划进度按事件唤醒，空闲时不固定轮询 plan-tasks', 
     assert.match(planSource, /conversation-task-state-changed/);
     assert.match(monitor, /window\.dispatchEvent\(new CustomEvent\('conversation-task-state-changed'/);
     assert.match(monitor, /window\.isConversationTaskRunning = isConversationTaskRunning/);
-    assert.match(html, /chat-plan-progress\.js\?v=20260815-1/);
+    assert.match(html, /chat-plan-progress\.js\?v=20261101-pentforge-english/);
 });
 
 test('任务计划进度事件在活跃任务列表变化和新任务开始时发出', () => {

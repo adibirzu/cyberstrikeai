@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"cyberstrike-ai/internal/legacytext"
 	"errors"
 	"fmt"
 	"strings"
@@ -193,7 +194,7 @@ func (s *ExecutionService) Submit(ctx context.Context, req ExecutionRequest) (*E
 
 	if s.storage != nil {
 		if err := s.storage.SaveToolExecution(exec); err != nil {
-			s.logger.Warn("保存执行记录到数据库失败", zap.Error(err), zap.String("executionId", id))
+			s.logger.Warn("Failed to save execution record to database", zap.Error(err), zap.String("executionId", id))
 		}
 	}
 	notifyToolRunBegin(ctx, id)
@@ -258,7 +259,7 @@ func (s *ExecutionService) markEntryRunning(entry *executionEntry) {
 	s.mu.Unlock()
 	if s.storage != nil {
 		if err := s.storage.SaveToolExecution(runningExec); err != nil {
-			s.logger.Warn("保存执行记录到数据库失败", zap.Error(err), zap.String("executionId", runningExec.ID))
+			s.logger.Warn("Failed to save execution record to database", zap.Error(err), zap.String("executionId", runningExec.ID))
 		}
 	}
 }
@@ -306,17 +307,17 @@ func (s *ExecutionService) finishEntry(ctx context.Context, entry *executionEntr
 		switch {
 		case errors.Is(err, context.DeadlineExceeded):
 			entry.exec.Status = ToolExecutionStatusHardTimeout
-			entry.exec.Error = "工具执行超过硬超时限制"
+			entry.exec.Error = "Tool executes beyond hard time limit"
 		case errors.Is(err, context.Canceled):
 			entry.exec.Status = ToolExecutionStatusCancelled
-			entry.exec.Error = "已手动终止或任务已取消"
+			entry.exec.Error = "Manually terminated or cancelled"
 		default:
 			entry.exec.Status = ToolExecutionStatusFailed
 			entry.exec.Error = err.Error()
 		}
 	} else if result != nil && result.Blocked {
 		entry.exec.Status = ToolExecutionStatusBlocked
-		entry.exec.Error = firstToolResultText(result, "工具调用已被安全规则拦截")
+		entry.exec.Error = firstToolResultText(result, "Tool call has been intercepted by security rules.")
 		entry.exec.Result = result
 	} else if result != nil && result.IsError {
 		if cancelledWithUserNote {
@@ -327,20 +328,20 @@ func (s *ExecutionService) finishEntry(ctx context.Context, entry *executionEntr
 			entry.exec.Error = ""
 		} else {
 			entry.exec.Status = ToolExecutionStatusFailed
-			entry.exec.Error = firstToolResultText(result, "工具执行返回错误结果")
+			entry.exec.Error = firstToolResultText(result, "Tool executes the return error result")
 		}
 		entry.exec.Result = result
 	} else {
 		entry.exec.Status = ToolExecutionStatusCompleted
 		if result == nil {
-			result = &ToolResult{Content: []Content{{Type: "text", Text: "工具执行完成，但未返回结果"}}}
+			result = &ToolResult{Content: []Content{{Type: "text", Text: "Tool implementation completed, but no results returned"}}}
 			entry.result = result
 		}
 		entry.exec.Result = result
 	}
 	if cancellationUnconfirmed {
 		entry.exec.Status = ToolExecutionStatusOrphaned
-		entry.exec.Error = "取消已请求，但远端 MCP 未确认执行已停止"
+		entry.exec.Error = "Canceled request, but remote MCP did not confirm execution stopped"
 		runlease.FromContext(ctx).MarkUnconfirmed(id, entry.exec.Error)
 	}
 	finalExec := cloneToolExecution(entry.exec)
@@ -348,7 +349,7 @@ func (s *ExecutionService) finishEntry(ctx context.Context, entry *executionEntr
 
 	if s.storage != nil {
 		if saveErr := s.storage.SaveToolExecution(finalExec); saveErr != nil {
-			s.logger.Warn("保存执行记录到数据库失败", zap.Error(saveErr), zap.String("executionId", id))
+			s.logger.Warn("Failed to save execution record to database", zap.Error(saveErr), zap.String("executionId", id))
 		}
 	}
 	if onDone != nil {
@@ -615,12 +616,12 @@ func isBackgroundWaitToolResult(result *ToolResult) bool {
 	hasRunningStatus := strings.Contains(text, "status: running") || strings.Contains(text, "status: queued") ||
 		strings.Contains(text, `"status": "running"`) || strings.Contains(text, `"status":"running"`) ||
 		strings.Contains(text, `"status": "queued"`) || strings.Contains(text, `"status":"queued"`)
-	hasSoftWaitSignal := strings.Contains(text, "工具已提交到后台执行") ||
-		strings.Contains(text, "本次等待已到达") ||
+	hasSoftWaitSignal := legacytext.Contains(text, "The tool is running in the background") ||
+		legacytext.Contains(text, "This wait reached") ||
 		strings.Contains(text, "wait_timeout:") ||
 		strings.Contains(text, "background execution") ||
 		strings.Contains(text, "still running") ||
-		strings.Contains(text, "仍未完成")
+		legacytext.Contains(text, "still incomplete")
 	return hasExecutionID && hasRunningStatus && hasSoftWaitSignal
 }
 

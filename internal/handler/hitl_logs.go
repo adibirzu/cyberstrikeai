@@ -207,7 +207,7 @@ func (h *AgentHandler) DeleteHITLLogs(c *gin.Context) {
 		All bool     `json:"all"`
 	}
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数无效: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Request parameter invalid: " + err.Error()})
 		return
 	}
 
@@ -223,13 +223,13 @@ func (h *AgentHandler) DeleteHITLLogs(c *gin.Context) {
 			return
 		}
 		if h.audit != nil {
-			h.audit.RecordOK(c, "hitl", "logs_clear", "清空人机协同审计日志", "hitl_interrupt", "", map[string]interface{}{
+			h.audit.RecordOK(c, "hitl", "logs_clear", "Clearing-house and auditing logs", "hitl_interrupt", "", map[string]interface{}{
 				"deleted": deleted,
 			})
 		}
 	} else {
 		if len(request.IDs) == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "审计日志 ID 列表不能为空"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "The audit log ID list cannot be empty"})
 			return
 		}
 		ids, filterErr := h.filterAllowedHitlInterruptIDs(c, request.IDs)
@@ -243,14 +243,14 @@ func (h *AgentHandler) DeleteHITLLogs(c *gin.Context) {
 			return
 		}
 		if h.audit != nil {
-			h.audit.RecordOK(c, "hitl", "logs_delete_batch", "批量删除人机协同审计日志", "hitl_interrupt", "", map[string]interface{}{
+			h.audit.RecordOK(c, "hitl", "logs_delete_batch", "Batch deletion of human and auditing logs", "hitl_interrupt", "", map[string]interface{}{
 				"count":   len(request.IDs),
 				"deleted": deleted,
 			})
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "删除成功", "deleted": deleted})
+	c.JSON(http.StatusOK, gin.H{"message": "Deleted successfully", "deleted": deleted})
 }
 
 func (h *AgentHandler) GetHITLLog(c *gin.Context) {
@@ -275,7 +275,7 @@ func (h *AgentHandler) GetHITLLog(c *gin.Context) {
 		return
 	}
 	if !h.hitlConversationAllowed(c, cid) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "无权访问该资源"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "Not entitled to visit that resource"})
 		return
 	}
 	c.JSON(http.StatusOK, hitlInterruptRowToMap(rowID, cid, mode, toolName, toolCallID, payload, rowStatus, reviewer, decidedBy, messageID, decision, comment, createdAt, decidedAt))

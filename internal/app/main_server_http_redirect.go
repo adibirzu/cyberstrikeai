@@ -165,7 +165,7 @@ func (m *mainServerMux) handleConn(raw net.Conn) {
 		return
 	}
 	if err := m.redirectSrv.Serve(ocl); err != nil && !errors.Is(err, net.ErrClosed) && !errors.Is(err, http.ErrServerClosed) {
-		m.logger.Debug("HTTP 重定向连接处理结束", zap.Error(err))
+		m.logger.Debug("HTTP Redirection Connection Processing End", zap.Error(err))
 	}
 }
 
@@ -176,7 +176,7 @@ func (m *mainServerMux) serveHTTPS(pc *peekedConn, localAddr net.Addr) {
 	handCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	if err := tlsConn.HandshakeContext(handCtx); err != nil {
-		m.logger.Debug("TLS 握手失败", zap.Error(err))
+		m.logger.Debug("TLS handshake failed", zap.Error(err))
 		_ = pc.Close()
 		return
 	}
@@ -193,7 +193,7 @@ func (m *mainServerMux) serveHTTPS(pc *peekedConn, localAddr net.Addr) {
 	plain := httpServerForTLSConn(srv)
 	ocl := &oneConnListener{conn: tlsConn, addr: localAddr}
 	if err := plain.Serve(ocl); err != nil && !errors.Is(err, net.ErrClosed) && !errors.Is(err, http.ErrServerClosed) {
-		m.logger.Debug("HTTPS 连接处理结束", zap.Error(err))
+		m.logger.Debug("End of HTTPS connection processing", zap.Error(err))
 	}
 }
 

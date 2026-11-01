@@ -1,8 +1,8 @@
-# 表单 / 检查项（示例）
+# Form / Check Item (example)
 
-本文件演示 **Level 3** 资源：与主说明分离，按需通过多代理 **`skill`** 或 HTTP `resource_path=FORMS.md` 加载。
+Presentation of this document **Level 3** Resources: Separate from master description, Multiple representation as required **`skill`** or HTTP `resource_path=FORMS.md` load.
 
-## 授权检查表
+## Authorization check forms
 
-- 书面授权是否在有效期内？
-- 测试范围（域名 / IP）是否与授权一致？
+- Is the written authorization valid for a period of time?
+- Is the scope of the test (domain name / IP) consistent with the mandate?

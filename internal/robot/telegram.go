@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	telegramPlatform       = "telegram"
-	telegramAPIBase        = "https://api.telegram.org"
-	telegramLongPollSec    = 30
+	telegramPlatform        = "telegram"
+	telegramAPIBase         = "https://api.telegram.org"
+	telegramLongPollSec     = 30
 	telegramMaxMessageRunes = 4096
 )
 
@@ -28,10 +28,10 @@ type telegramUpdate struct {
 }
 
 type telegramMessage struct {
-	MessageID int64           `json:"message_id"`
-	Chat      telegramChat    `json:"chat"`
-	From      *telegramUser   `json:"from"`
-	Text      string          `json:"text"`
+	MessageID int64            `json:"message_id"`
+	Chat      telegramChat     `json:"chat"`
+	From      *telegramUser    `json:"from"`
+	Text      string           `json:"text"`
 	Entities  []telegramEntity `json:"entities"`
 }
 
@@ -81,11 +81,11 @@ func runTelegramLoop(ctx context.Context, cfg config.RobotTelegramConfig, h Mess
 	for {
 		err := runTelegramPoll(ctx, cfg, h, logger)
 		if ctx.Err() != nil {
-			logger.Info("Telegram 长轮询已按配置关闭")
+			logger.Info("Telegram long-cycle query closed by configuration")
 			return
 		}
 		if err != nil {
-			logger.Warn("Telegram 长轮询异常，将自动重连", zap.Error(err), zap.Duration("retry_after", backoff))
+			logger.Warn("Telegram's long-duration inquiry is abnormal and automatically reconnects.", zap.Error(err), zap.Duration("retry_after", backoff))
 		}
 		if !waitReconnect(ctx, &backoff) {
 			return
@@ -98,13 +98,13 @@ func runTelegramPoll(ctx context.Context, cfg config.RobotTelegramConfig, h Mess
 	botUsername := strings.TrimSpace(cfg.BotUsername)
 	if botUsername == "" {
 		if name, err := telegramGetMe(ctx, token); err != nil {
-			logger.Warn("Telegram getMe 失败", zap.Error(err))
+			logger.Warn("Telegram getMe failed", zap.Error(err))
 		} else {
 			botUsername = name
 		}
 	}
 	offset := cfg.UpdateOffset
-	logger.Info("Telegram 长轮询已启动", zap.String("bot", botUsername))
+	logger.Info("Telegram, long tour started.", zap.String("bot", botUsername))
 	client := &http.Client{Timeout: telegramLongPollSec*time.Second + 10*time.Second}
 
 	for {
@@ -140,10 +140,10 @@ func runTelegramPoll(ctx context.Context, cfg config.RobotTelegramConfig, h Mess
 				}
 			}
 			userID := telegramSessionKey(chatType, u.Message.Chat.ID, u.Message.From.ID)
-			logger.Info("Telegram 收到消息", zap.String("from", userID), zap.String("content", text))
+			logger.Info("Telegram, get a message.", zap.String("from", userID), zap.String("content", text))
 			reply := h.HandleMessage(telegramPlatform, userID, text)
 			if err := telegramSendReply(ctx, client, token, u.Message.Chat.ID, reply); err != nil {
-				logger.Warn("Telegram 发送回复失败", zap.String("to", userID), zap.Error(err))
+				logger.Warn("Telegram failed to send a reply", zap.String("to", userID), zap.Error(err))
 			}
 		}
 	}

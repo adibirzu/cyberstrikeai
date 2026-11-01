@@ -1,6 +1,7 @@
 package database
 
 import (
+	"cyberstrike-ai/internal/legacytext"
 	"encoding/json"
 	"strconv"
 	"strings"
@@ -8,26 +9,26 @@ import (
 	"cyberstrike-ai/internal/mcp"
 )
 
-const legacyToolGuardPrefix = "工具调用已被安全规则拦截"
+const legacyToolGuardPrefix = legacytext.ToolGuardPrefix
 
 // Only the exact envelope emitted by the old local guard is recognized here.
 // New executions use the structured marker and never infer policy from text.
 func isLegacyToolGuardRefusal(text string) bool {
-	if !strings.HasPrefix(text, legacyToolGuardPrefix+"：") && !strings.HasPrefix(text, legacyToolGuardPrefix+"\n规则: ") {
+	if !strings.HasPrefix(text, legacyToolGuardPrefix+legacytext.FullWidthColon) && !strings.HasPrefix(text, legacyToolGuardPrefix+legacytext.RuleMarker) {
 		return false
 	}
-	matchIndex := strings.LastIndex(text, "\n匹配内容: ")
+	matchIndex := strings.LastIndex(text, legacytext.MatchMarker)
 	if matchIndex < 0 {
 		return false
 	}
-	if _, err := strconv.Unquote(text[matchIndex+len("\n匹配内容: "):]); err != nil {
+	if _, err := strconv.Unquote(text[matchIndex+len(legacytext.MatchMarker):]); err != nil {
 		return false
 	}
-	ruleIndex := strings.LastIndex(text[:matchIndex], "\n规则: ")
+	ruleIndex := strings.LastIndex(text[:matchIndex], legacytext.RuleMarker)
 	if ruleIndex < 0 {
 		return false
 	}
-	rule := text[ruleIndex+len("\n规则: ") : matchIndex]
+	rule := text[ruleIndex+len(legacytext.RuleMarker) : matchIndex]
 	idIndex := strings.LastIndex(rule, " (")
 	return idIndex > 0 && strings.HasSuffix(rule, ")") && len(rule[idIndex+2:len(rule)-1]) > 0 && !strings.Contains(rule, "\n")
 }

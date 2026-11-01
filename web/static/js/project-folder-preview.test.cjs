@@ -7,7 +7,7 @@ const styles = fs.readFileSync('web/static/css/style.css', 'utf8');
 const chat = fs.readFileSync('web/static/js/chat.js', 'utf8');
 const html = fs.readFileSync('web/templates/index.html', 'utf8');
 const rbac = fs.readFileSync('web/static/js/rbac-guards.js', 'utf8');
-const zh = fs.readFileSync('web/static/i18n/zh-CN.json', 'utf8');
+const zh = fs.readFileSync('maintenance/vendor-locales/zh-CN.json', 'utf8');
 const en = fs.readFileSync('web/static/i18n/en-US.json', 'utf8');
 
 function functionSource(source, name, nextName) {

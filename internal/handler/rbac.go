@@ -114,7 +114,7 @@ func validateRBACPermissionKeys(keys []string) error {
 			continue
 		}
 		if _, ok := security.PermissionCatalog[key]; !ok {
-			return fmt.Errorf("未知权限: %s", key)
+			return fmt.Errorf("Unknown permission: %s", key)
 		}
 	}
 	return nil
@@ -136,7 +136,7 @@ func (h *RBACHandler) CreateRole(c *gin.Context) {
 		return
 	}
 	if h.audit != nil {
-		h.audit.RecordOK(c, "rbac", "create_role", "创建平台角色", "role", role.ID, nil)
+		h.audit.RecordOK(c, "rbac", "create_role", "Create platform role", "role", role.ID, nil)
 	}
 	c.JSON(http.StatusOK, gin.H{"role": role})
 }
@@ -147,11 +147,11 @@ func (h *RBACHandler) UpdateRole(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	existing, err := h.db.GetRBACRoleByID(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "角色不存在"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Role not found"})
 		return
 	}
 	if existing.IsSystem {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "系统内置角色不可修改，请创建自定义角色"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Roles in the system are not subject to change. Create custom roles"})
 		return
 	}
 	var req upsertRBACRoleRequest
@@ -177,7 +177,7 @@ func (h *RBACHandler) UpdateRole(c *gin.Context) {
 		role.IsSystem = true
 	}
 	if h.audit != nil {
-		h.audit.RecordOK(c, "rbac", "update_role", "更新平台角色", "role", id, nil)
+		h.audit.RecordOK(c, "rbac", "update_role", "Update platform role", "role", id, nil)
 	}
 	if h.auth != nil && (existing.Scope != role.Scope || !sameRolePermissions(previousPermissions, req.Permissions)) {
 		h.auth.RevokeRoleSessions(id)
@@ -194,7 +194,7 @@ func (h *RBACHandler) DeleteRole(c *gin.Context) {
 		return
 	}
 	if h.audit != nil {
-		h.audit.RecordOK(c, "rbac", "delete_role", "删除平台角色", "role", id, nil)
+		h.audit.RecordOK(c, "rbac", "delete_role", "Delete platform role", "role", id, nil)
 	}
 	if h.auth != nil {
 		h.auth.RevokeRoleSessions(id)
@@ -263,7 +263,7 @@ func (h *RBACHandler) CreateUser(c *gin.Context) {
 		return
 	}
 	if len(strings.TrimSpace(req.Password)) < 8 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "密码长度至少需要 8 位"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Password length takes at least 8 bits"})
 		return
 	}
 	hash, err := security.HashPassword(req.Password)
@@ -281,7 +281,7 @@ func (h *RBACHandler) CreateUser(c *gin.Context) {
 		return
 	}
 	if h.audit != nil {
-		h.audit.RecordOK(c, "rbac", "create_user", "创建平台用户", "user", user.ID, map[string]interface{}{"username": user.Username})
+		h.audit.RecordOK(c, "rbac", "create_user", "Create platform user", "user", user.ID, map[string]interface{}{"username": user.Username})
 	}
 	c.JSON(http.StatusOK, gin.H{"user": user})
 }
@@ -297,7 +297,7 @@ func (h *RBACHandler) UpdateUser(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	user, err := h.db.GetRBACUserByID(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "User does not exist"})
 		return
 	}
 	var req updateRBACUserRequest
@@ -315,7 +315,7 @@ func (h *RBACHandler) UpdateUser(c *gin.Context) {
 	}
 	if req.Password != nil && strings.TrimSpace(*req.Password) != "" {
 		if len(strings.TrimSpace(*req.Password)) < 8 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "密码长度至少需要 8 位"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Password length takes at least 8 bits"})
 			return
 		}
 		hash, err := security.HashPassword(*req.Password)
@@ -329,7 +329,7 @@ func (h *RBACHandler) UpdateUser(c *gin.Context) {
 		}
 	}
 	if h.audit != nil {
-		h.audit.RecordOK(c, "rbac", "update_user", "更新平台用户", "user", id, nil)
+		h.audit.RecordOK(c, "rbac", "update_user", "Update platform user", "user", id, nil)
 	}
 	if h.auth != nil {
 		h.auth.RevokeUserSessions(id)
@@ -345,7 +345,7 @@ func (h *RBACHandler) DeleteUser(c *gin.Context) {
 		return
 	}
 	if h.audit != nil {
-		h.audit.RecordOK(c, "rbac", "delete_user", "删除平台用户", "user", id, nil)
+		h.audit.RecordOK(c, "rbac", "delete_user", "Delete platform user", "user", id, nil)
 	}
 	if h.auth != nil {
 		h.auth.RevokeUserSessions(id)
@@ -372,7 +372,7 @@ func (h *RBACHandler) AssignResource(c *gin.Context) {
 		resourceIDs = append(resourceIDs, req.ResourceID)
 	}
 	if len(resourceIDs) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "至少需要一个资源 ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "At least a resource. ID"})
 		return
 	}
 	var created int64
@@ -393,7 +393,7 @@ func (h *RBACHandler) AssignResource(c *gin.Context) {
 			if detectedTypes != nil {
 				resourceType = detectedTypes[strings.TrimSpace(resourceID)]
 			}
-			h.audit.RecordOK(c, "rbac", "assign_resource", "授权资源访问", resourceType, strings.TrimSpace(resourceID), map[string]interface{}{"user_id": req.UserID})
+			h.audit.RecordOK(c, "rbac", "assign_resource", "Grant resource access", resourceType, strings.TrimSpace(resourceID), map[string]interface{}{"user_id": req.UserID})
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -454,7 +454,7 @@ func (h *RBACHandler) DeleteResourceAssignment(c *gin.Context) {
 		return
 	}
 	if h.audit != nil {
-		h.audit.RecordOK(c, "rbac", "delete_resource_assignment", "撤销资源授权", assignment.ResourceType, assignment.ResourceID, map[string]interface{}{
+		h.audit.RecordOK(c, "rbac", "delete_resource_assignment", "Revoke resource grant", assignment.ResourceType, assignment.ResourceID, map[string]interface{}{
 			"user_id":       assignment.UserID,
 			"assignment_id": assignment.ID,
 		})

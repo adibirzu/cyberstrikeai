@@ -234,15 +234,15 @@ func (h *NotificationHandler) loadPendingHITLItems(limit int, english bool, acce
 		if err := rows.Scan(&id, &conversationID, &toolName, &createdSec); err != nil {
 			continue
 		}
-		desc := i18nText(english, "会话 "+conversationID+" 的审批中断待处理", "Conversation "+conversationID+" has pending HITL approval")
+		desc := i18nText(english, "Session "+conversationID+" Interrupted approval pending processing", "Conversation "+conversationID+" has pending HITL approval")
 		if strings.TrimSpace(toolName) != "" {
-			desc = i18nText(english, "工具 "+toolName+" 等待审批", "Tool "+toolName+" is waiting for approval")
+			desc = i18nText(english, "Tools "+toolName+" Pending approval", "Tool "+toolName+" is waiting for approval")
 		}
 		items = append(items, NotificationSummaryItem{
 			ID:             "hitl:" + id,
 			Level:          "p0",
 			Type:           "hitl_pending",
-			Title:          i18nText(english, "HITL 待审批", "HITL Pending Approval"),
+			Title:          i18nText(english, "HITL Pending approval", "HITL Pending Approval"),
 			Desc:           desc,
 			Ts:             unixSecToRFC3339(createdSec),
 			Count:          1,
@@ -309,10 +309,10 @@ func (h *NotificationHandler) loadVulnerabilityItems(sinceMs int64, limit int, e
 		if sevUpper == "" {
 			sevUpper = "INFO"
 		}
-		finalTitle := i18nText(english, "新漏洞（"+sevUpper+"）", "New Vulnerability ("+sevUpper+")")
+		finalTitle := i18nText(english, "New Hole"+sevUpper+"）", "New Vulnerability ("+sevUpper+")")
 		finalDesc := strings.TrimSpace(title)
 		if finalDesc == "" {
-			finalDesc = i18nText(english, "（无标题）", "(Untitled)")
+			finalDesc = i18nText(english, "(untitled)", "(Untitled)")
 		}
 		items = append(items, NotificationSummaryItem{
 			ID:              "vuln:" + id,
@@ -353,13 +353,13 @@ func (h *NotificationHandler) loadC2SessionOnlineEvents(sinceMs int64, limit int
 			desc = desc[:200] + "…"
 		}
 		if desc == "" {
-			desc = i18nText(english, "新会话已建立", "A new session was created")
+			desc = i18nText(english, "New Session Created", "A new session was created")
 		}
 		items = append(items, NotificationSummaryItem{
 			ID:         "c2evt:" + e.ID,
 			Level:      "p0",
 			Type:       "c2_session_online",
-			Title:      i18nText(english, "C2 新会话上线", "C2 new session online"),
+			Title:      i18nText(english, "C2 New session on line", "C2 new session online"),
 			Desc:       desc,
 			Ts:         e.CreatedAt.UTC().Format(time.RFC3339),
 			Count:      1,
@@ -398,14 +398,14 @@ func (h *NotificationHandler) loadFailedExecutionItems(sinceMs int64, limit int,
 		}
 		count++
 		if strings.TrimSpace(toolName) == "" {
-			toolName = i18nText(english, "未知工具", "unknown")
+			toolName = i18nText(english, "Unknown tool", "unknown")
 		}
 		items = append(items, NotificationSummaryItem{
 			ID:          "exec_failed:" + id,
 			Level:       "p0",
 			Type:        "task_failed",
-			Title:       i18nText(english, "任务执行失败", "Task Execution Failed"),
-			Desc:        i18nText(english, "工具 "+toolName+" 执行失败", "Tool "+toolName+" execution failed"),
+			Title:       i18nText(english, "Mission failed", "Task Execution Failed"),
+			Desc:        i18nText(english, "Tools "+toolName+" Implementation Failed", "Tool "+toolName+" execution failed"),
 			Ts:          unixSecToRFC3339(startSec),
 			Count:       1,
 			Actionable:  false,
@@ -435,8 +435,8 @@ func (h *NotificationHandler) summarizeLongRunningTasks(threshold time.Duration,
 				ID:             "task_long:" + t.ConversationID,
 				Level:          "p1",
 				Type:           "long_running_tasks",
-				Title:          i18nText(english, "长时间运行任务", "Long Running Task"),
-				Desc:           i18nText(english, "会话 "+t.ConversationID+" 运行超过 15 分钟", "Conversation "+t.ConversationID+" has been running over 15 minutes"),
+				Title:          i18nText(english, "Run tasks for long periods", "Long Running Task"),
+				Desc:           i18nText(english, "Session "+t.ConversationID+" Runs more than 15 minutes", "Conversation "+t.ConversationID+" has been running over 15 minutes"),
 				Ts:             t.StartedAt.UTC().Format(time.RFC3339),
 				Count:          1,
 				Actionable:     true,
@@ -467,8 +467,8 @@ func (h *NotificationHandler) summarizeCompletedTasksSince(sinceMs int64, limit 
 				ID:             "task_completed:" + t.ConversationID + ":" + strconv.FormatInt(t.CompletedAt.Unix(), 10),
 				Level:          "p2",
 				Type:           "task_completed",
-				Title:          i18nText(english, "任务完成", "Task Completed"),
-				Desc:           i18nText(english, "会话 "+t.ConversationID+" 已完成", "Conversation "+t.ConversationID+" completed"),
+				Title:          i18nText(english, "Mission accomplished.", "Task Completed"),
+				Desc:           i18nText(english, "Session "+t.ConversationID+" Completed", "Conversation "+t.ConversationID+" completed"),
 				Ts:             t.CompletedAt.UTC().Format(time.RFC3339),
 				Count:          1,
 				Actionable:     false,
@@ -682,7 +682,7 @@ func (h *NotificationHandler) MarkRead(c *gin.Context) {
 		return
 	}
 	if err := pruneNotificationReads(h.db, session.UserID, notificationReadMaxRows); err != nil {
-		h.logger.Warn("裁剪通知已读记录失败", zap.Error(err))
+		h.logger.Warn("Crop Notification Read Record Failed", zap.Error(err))
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "marked": marked})
 }
@@ -710,7 +710,7 @@ func (h *NotificationHandler) GetSummary(c *gin.Context) {
 		var err error
 		hitlItems, err = h.loadPendingHITLItems(limit, english, access)
 		if err != nil {
-			h.logger.Warn("加载 HITL 通知失败", zap.Error(err))
+			h.logger.Warn("Failed to load HITL notification", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to summarize hitl notifications"})
 			return
 		}
@@ -728,7 +728,7 @@ func (h *NotificationHandler) GetSummary(c *gin.Context) {
 		var err error
 		vulnItems, vulnCounts, err = h.loadVulnerabilityItems(sinceMs, limit, english, access)
 		if err != nil {
-			h.logger.Warn("加载漏洞通知失败", zap.Error(err))
+			h.logger.Warn("Loading the bug notification failed", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to summarize vulnerabilities"})
 			return
 		}
@@ -740,7 +740,7 @@ func (h *NotificationHandler) GetSummary(c *gin.Context) {
 		var err error
 		c2OnlineItems, c2OnlineCount, err = h.loadC2SessionOnlineEvents(sinceMs, limit, english, access)
 		if err != nil {
-			h.logger.Warn("加载 C2 会话上线通知失败", zap.Error(err))
+			h.logger.Warn("Failed to load C2 session online", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to summarize c2 session events"})
 			return
 		}
@@ -765,7 +765,7 @@ func (h *NotificationHandler) GetSummary(c *gin.Context) {
 	session, _ := security.CurrentSession(c)
 	items, err := h.applyReadStates(session.UserID, items)
 	if err != nil {
-		h.logger.Warn("加载通知已读状态失败", zap.Error(err))
+		h.logger.Warn("Failed to load notification read state", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load notification read states"})
 		return
 	}

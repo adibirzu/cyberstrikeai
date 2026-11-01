@@ -89,7 +89,7 @@ func (h *AgentHandler) persistFinalizationDecision(
 	_ = h.db.AddProcessDetail(assistantMessageID, conversationID, "finalization_check", finalizationCheckMessage(decision), decision)
 	if decision.Finalizable {
 		if err := h.db.UpdateAssistantMessageFinalize(assistantMessageID, decision.FinalText, mcpExecutionIDs, reasoningContent); err != nil && h.logger != nil {
-			h.logger.Warn("更新最终助手消息失败", zap.Error(err), zap.String("conversationId", conversationID), zap.String("agentMode", agentMode))
+			h.logger.Warn("Failed to update final assistant message", zap.Error(err), zap.String("conversationId", conversationID), zap.String("agentMode", agentMode))
 		}
 		return
 	}
@@ -133,7 +133,7 @@ func (h *AgentHandler) finalizeCandidateForDeliveryWithPolicy(
 	_ = h.db.AddProcessDetail(assistantMessageID, conversationID, "finalization_check", finalizationCheckMessage(decision), decision)
 	if decision.Finalizable {
 		if err := h.db.UpdateAssistantMessageFinalize(assistantMessageID, decision.FinalText, mcpExecutionIDs, reasoningContent); err != nil && h.logger != nil {
-			h.logger.Warn("更新最终助手消息失败", zap.Error(err), zap.String("conversationId", conversationID), zap.String("agentMode", agentMode))
+			h.logger.Warn("Failed to update final assistant message", zap.Error(err), zap.String("conversationId", conversationID), zap.String("agentMode", agentMode))
 		}
 		return decision
 	}
@@ -143,7 +143,7 @@ func (h *AgentHandler) finalizeCandidateForDeliveryWithPolicy(
 
 func finalizationCheckMessage(d agentfinalizer.Decision) string {
 	if d.Finalizable {
-		return "最终回复检查通过。"
+		return "Final response check passed."
 	}
 	return finalizationBlockedMessage(d)
 }
@@ -152,15 +152,15 @@ func finalizationBlockedMessage(d agentfinalizer.Decision) string {
 	if d.CompletionReason == "workflow_rejected" && strings.TrimSpace(d.FinalText) != "" {
 		return d.FinalText
 	}
-	parts := []string{"任务尚未达到最终回复条件，暂不生成成功结论。"}
+	parts := []string{"The task has not yet reached the condition for a final response and no successful conclusion has yet been generated."}
 	if d.CompletionReason != "" {
-		parts = append(parts, "原因: "+d.CompletionReason)
+		parts = append(parts, "Reason: "+d.CompletionReason)
 	}
 	if len(d.PendingExecutionIDs) > 0 {
-		parts = append(parts, fmt.Sprintf("仍有 %d 个工具执行未结束: %s", len(d.PendingExecutionIDs), strings.Join(d.PendingExecutionIDs, ", ")))
+		parts = append(parts, fmt.Sprintf("Still. %d Tool implementation not completed: %s", len(d.PendingExecutionIDs), strings.Join(d.PendingExecutionIDs, ", ")))
 	}
 	if len(d.MissingChecks) > 0 {
-		parts = append(parts, "缺失检查: "+strings.Join(d.MissingChecks, "; "))
+		parts = append(parts, "Missing check: "+strings.Join(d.MissingChecks, "; "))
 	}
 	return strings.Join(parts, "\n")
 }

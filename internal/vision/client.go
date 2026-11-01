@@ -2,6 +2,7 @@ package vision
 
 import (
 	"context"
+	"cyberstrike-ai/internal/legacytext"
 	"encoding/base64"
 	"fmt"
 	"net"
@@ -145,22 +146,22 @@ func (c *Client) Analyze(ctx context.Context, img ImagePayload, question string)
 func buildVisionPrompt(question string) string {
 	q := strings.TrimSpace(question)
 	if q == "" {
-		q = "请对图片做通用描述，侧重授权安全测试场景（可见文本、表单、按钮、验证码、错误信息、技术栈线索）。"
+		q = "Please describe the picture in a generic way, with emphasis on the authorized security test scene (visible text, forms, buttons, authentication codes, error information, technology trail)."
 	}
 	extra := ""
 	if looksLikeCaptchaQuestion(q) {
-		extra = "\n若为验证码：仅输出你辨认出的字符序列，不要空格、标点、解释；看不清则明确说无法识别。"
+		extra = "\nIf the authentication code is: Only output of the character series you identify, do not space, label, explanation; and if you cannot see clearly, you cannot be identified."
 	}
-	return `你是授权安全测试助手。请根据图片回答用户问题，只描述你能从图中确认的内容，不要编造。
-用户问题：` + q + extra
+	return `You are authorized security testing assistant. Please answer the user question based on the image, but only what you can confirm from the picture, and don't make it up.
+User questions:` + q + extra
 }
 
 func looksLikeCaptchaQuestion(q string) bool {
 	s := strings.ToLower(q)
-	for _, kw := range []string{"验证码", "captcha", "verification code", "verify code", "vcode", "图形码"} {
-		if strings.Contains(s, kw) {
+	for _, kw := range []string{"Authentication code", "captcha", "verification code", "verify code", "vcode", "Graphic Code"} {
+		if legacytext.Contains(s, kw) {
 			return true
 		}
 	}
-	return strings.Contains(s, "只输出") && (strings.Contains(s, "字符") || strings.Contains(s, "character"))
+	return legacytext.Contains(s, "Output only") && (legacytext.Contains(s, "Character") || strings.Contains(s, "character"))
 }

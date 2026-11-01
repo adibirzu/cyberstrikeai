@@ -106,7 +106,7 @@ func TestCreateProgressCallback_HidesInternalEinoDiagnostics(t *testing.T) {
 	cb("model_output_rejected", "模型工具调用不完整或参数不安全，已阻止执行并要求重写。", map[string]interface{}{
 		"reason": "invalid_tool_arguments_json",
 	})
-	cb("progress", "Eino TurnLoop 常驻多轮 runtime 已接管本轮会话。", map[string]interface{}{
+	cb("progress", "Eino TurnLoop has taken over the current round of sessions from a permanent multi-wheel runtime.", map[string]interface{}{
 		"kind": "turn_loop_takeover",
 	})
 

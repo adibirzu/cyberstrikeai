@@ -79,8 +79,8 @@ func TestBuildToolFailureMessageAuthorizationDenied(t *testing.T) {
 		errors.New("tool authorization denied: no access to project"),
 	)
 	for _, want := range []string{
-		"工具名称: list_project_facts",
-		"错误详情: tool authorization denied: no access to project",
+		"Tool name: list_project_facts",
+		"Error Details: tool authorization denied: no access to project",
 	} {
 		if !strings.Contains(msg, want) {
 			t.Fatalf("message missing %q:\n%s", want, msg)
@@ -102,13 +102,13 @@ func TestBuildToolFailureMessageAuthorizationDenied(t *testing.T) {
 func TestBuildToolFailureMessageCanceled(t *testing.T) {
 	msg := buildToolFailureMessage(
 		"long_running_tool",
-		"工具调用已被手动终止（MCP 监控页）。智能体将携带此结果继续后续步骤，整条任务不会因此被停止。",
+		"The tool call was manually stopped from the MCP monitor. Continue the task using this result.",
 		context.Canceled,
 	)
 
 	for _, want := range []string{
-		"工具名称: long_running_tool",
-		"错误详情: 工具调用已被手动终止",
+		"Tool name: long_running_tool",
+		"Error Details: The tool call was manually stopped",
 	} {
 		if !strings.Contains(msg, want) {
 			t.Fatalf("message missing %q:\n%s", want, msg)
@@ -124,8 +124,8 @@ func TestBuildToolFailureMessageDeadlineExceeded(t *testing.T) {
 	)
 
 	for _, want := range []string{
-		"工具名称: nmap",
-		"错误详情: 工具执行超过 15 分钟被自动终止",
+		"Tool name: nmap",
+		"Error Details: 工具执行超过 15 分钟被自动终止",
 	} {
 		if !strings.Contains(msg, want) {
 			t.Fatalf("message missing %q:\n%s", want, msg)
@@ -137,8 +137,8 @@ func TestBuildToolFailureMessageUnknownKeepsGenericFallback(t *testing.T) {
 	msg := buildToolFailureMessage("custom_tool", "dial tcp: connection reset by peer", errors.New("dial tcp: connection reset by peer"))
 
 	for _, want := range []string{
-		"工具名称: custom_tool",
-		"错误详情: dial tcp: connection reset by peer",
+		"Tool name: custom_tool",
+		"Error Details: dial tcp: connection reset by peer",
 	} {
 		if !strings.Contains(msg, want) {
 			t.Fatalf("message missing %q:\n%s", want, msg)

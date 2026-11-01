@@ -14,13 +14,13 @@ import (
 )
 
 func main() {
-	var configPath = flag.String("config", "config.yaml", "配置文件路径")
+	var configPath = flag.String("config", "config.yaml", "Profile Path")
 	flag.Parse()
 
 	// 加载配置
 	cfg, err := config.Load(*configPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "加载配置失败: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Loading configuration failed: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -36,7 +36,7 @@ func main() {
 	mcpServer := mcp.NewServer(log.Logger)
 	guard, err := toolguard.NewManager(cfg.EffectiveToolGuard())
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "初始化调用拦截失败: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Initial call call failed: %v\n", err)
 		os.Exit(1)
 	}
 	mcpServer.SetToolGuard(guard)
@@ -48,11 +48,11 @@ func main() {
 	executor.RegisterTools(mcpServer)
 	mcp.RegisterExecutionControlTools(mcpServer, nil)
 
-	log.Logger.Info("MCP服务器（stdio模式）已启动，等待消息...")
+	log.Logger.Info("MCP server (stdio mode) started, awaiting message...")
 
 	// 运行 stdio 循环
 	if err := mcpServer.HandleStdio(); err != nil {
-		log.Logger.Error("MCP服务器运行失败", zap.Error(err))
+		log.Logger.Error("MCP server running failed", zap.Error(err))
 		os.Exit(1)
 	}
 }

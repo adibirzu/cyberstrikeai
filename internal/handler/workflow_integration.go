@@ -19,7 +19,7 @@ func (h *AgentHandler) finalizeWorkflowRunForDelivery(conversationID, messageID 
 	in := agentfinalizer.Input{ConversationID: conversationID, AssistantMessageID: messageID, AgentMode: "workflow"}
 	if result == nil {
 		in.Status = agentfinalizer.StatusFailed
-		in.Response = "工作流未返回执行结果。"
+		in.Response = "The workflow did not return the performance results."
 	} else {
 		in.Response = result.Response
 		in.AwaitingHITL = result.AwaitingHITL
@@ -42,7 +42,7 @@ func (h *AgentHandler) roleForWorkflow(req *ChatRequest) (config.RoleConfig, boo
 	if roleName == "" {
 		return config.RoleConfig{}, false
 	}
-	role, ok := h.config.Roles[roleName]
+	role, ok := h.config.Role(roleName)
 	if !ok || !role.Enabled {
 		return config.RoleConfig{}, false
 	}
@@ -94,13 +94,13 @@ func (h *AgentHandler) runRoleWorkflowStreamIfBound(
 	if startedTask, err := h.tasks.StartTask(conversationID, userMessage, cancelWithCause); err != nil {
 		var errorMsg string
 		if errors.Is(err, ErrTaskAlreadyRunning) {
-			errorMsg = "⚠️ 当前会话已有任务正在执行中，请等待当前任务完成或点击「停止任务」后再尝试。"
+			errorMsg = "⚠️ The current session is already in progress. Please wait for the current task to be completed or click \" Stop the job \" before trying."
 			sendEvent("error", errorMsg, map[string]interface{}{
 				"conversationId": conversationID,
 				"errorType":      "task_already_running",
 			})
 		} else {
-			errorMsg = "❌ 无法启动任务: " + err.Error()
+			errorMsg = "Unable to start task: " + err.Error()
 			sendEvent("error", errorMsg, nil)
 		}
 		if assistantMessageID != "" {
@@ -141,10 +141,10 @@ func (h *AgentHandler) runRoleWorkflowStreamIfBound(
 		if errors.Is(cause, ErrTaskCancelled) {
 			taskStatus = "cancelled"
 			h.tasks.UpdateTaskStatus(conversationID, taskStatus)
-			cancelMsg := "任务已被用户取消，后续操作已停止。"
+			cancelMsg := "The task has been cancelled by the user and follow-up has been stopped."
 			if assistantMessageID != "" {
 				if err := h.appendAssistantMessageNotice(assistantMessageID, cancelMsg); err != nil {
-					h.logger.Warn("更新取消后的助手消息失败", zap.Error(err))
+					h.logger.Warn("Failed to update help after cancellation", zap.Error(err))
 				}
 				_ = h.db.AddProcessDetail(assistantMessageID, conversationID, "cancelled", cancelMsg, nil)
 			}
@@ -158,7 +158,7 @@ func (h *AgentHandler) runRoleWorkflowStreamIfBound(
 		if taskDeadlineExceeded(taskCtx) {
 			taskStatus = "timeout"
 			h.tasks.UpdateTaskStatus(conversationID, taskStatus)
-			timeoutMsg := "任务执行超时，已自动终止。"
+			timeoutMsg := "Tasks are timed out and automatically terminated."
 			if assistantMessageID != "" {
 				_, _ = h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", timeoutMsg, time.Now(), assistantMessageID)
 				_ = h.db.AddProcessDetail(assistantMessageID, conversationID, "timeout", timeoutMsg, nil)
@@ -171,7 +171,7 @@ func (h *AgentHandler) runRoleWorkflowStreamIfBound(
 			sendEvent("done", "", map[string]interface{}{"conversationId": conversationID})
 			return true
 		}
-		errMsg := "执行角色绑定流程失败: " + err.Error()
+		errMsg := "Implementation of role binding process failed: " + err.Error()
 		taskStatus = "failed"
 		h.tasks.UpdateTaskStatus(conversationID, taskStatus)
 		if assistantMessageID != "" {
@@ -237,12 +237,12 @@ func (h *AgentHandler) runRoleWorkflowJSONIfBound(c *gin.Context, req *ChatReque
 	if startedTask, err := h.tasks.StartTask(conversationID, userMessage, cancelWithCause); err != nil {
 		if errors.Is(err, ErrTaskAlreadyRunning) {
 			c.JSON(http.StatusConflict, gin.H{
-				"error":          "⚠️ 当前会话已有任务正在执行中，请等待当前任务完成或点击「停止任务」后再尝试。",
+				"error":          "⚠️ The current session is already in progress. Please wait for the current task to be completed or click \" Stop the job \" before trying.",
 				"conversationId": conversationID,
 				"errorType":      "task_already_running",
 			})
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ 无法启动任务: " + err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to start task: " + err.Error()})
 		}
 		return true
 	} else {

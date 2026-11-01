@@ -81,10 +81,10 @@ type App struct {
 func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error) {
 	toolGuard, err := toolguard.NewManager(cfg.EffectiveToolGuard())
 	if err != nil {
-		return nil, fmt.Errorf("初始化调用拦截规则: %w", err)
+		return nil, fmt.Errorf("Initial call intercept rule: %w", err)
 	}
 	if err := multiagent.InitADK(); err != nil {
-		return nil, fmt.Errorf("初始化 Eino ADK: %w", err)
+		return nil, fmt.Errorf("Initialize Eino ADK: %w", err)
 	}
 
 	gin.SetMode(gin.ReleaseMode)
@@ -101,25 +101,25 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 
 	// 确保目录存在
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
-		return nil, fmt.Errorf("创建数据库目录失败: %w", err)
+		return nil, fmt.Errorf("Failed to create database directory: %w", err)
 	}
 
 	db, err := database.NewDB(dbPath, log.Logger)
 	if err != nil {
-		return nil, fmt.Errorf("初始化数据库失败: %w", err)
+		return nil, fmt.Errorf("Failed to initialize database: %w", err)
 	}
 
 	// 认证管理器（数据库初始化后挂载 RBAC）
 	authManager := security.NewAuthManager(cfg.Auth.SessionDurationHours)
 	if generatedPassword, err := authManager.AttachRBACStore(db); err != nil {
-		return nil, fmt.Errorf("初始化RBAC失败: %w", err)
+		return nil, fmt.Errorf("Initialization of RBAC failed: %w", err)
 	} else if generatedPassword != "" {
 		config.PrintBootstrapAdminPassword(generatedPassword)
 	}
 	for platform, userID := range cfg.Robots.ServiceAccountUserIDs() {
 		user, userErr := db.GetRBACUserByID(userID)
 		if userErr != nil || !user.Enabled {
-			return nil, fmt.Errorf("robots.%s.auth.service_user_id 必须指向已启用的 RBAC 用户", platform)
+			return nil, fmt.Errorf("robots.%s.auth.service_user_id Must Point to Enabled RBAC user", platform)
 		}
 	}
 
@@ -128,14 +128,14 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 	auditSvc.PurgeExpired()
 	audit.StartRetentionLoop(auditSvc, log.Logger)
 	if err := db.PurgeWorkflowPackageLifecycle(time.Now().UTC()); err != nil {
-		log.Logger.Warn("清理过期工作流包记录失败", zap.Error(err))
+		log.Logger.Warn("Failed to clear expired workflow records", zap.Error(err))
 	}
 	go func() {
 		ticker := time.NewTicker(time.Hour)
 		defer ticker.Stop()
 		for range ticker.C {
 			if err := db.PurgeWorkflowPackageLifecycle(time.Now().UTC()); err != nil {
-				log.Logger.Warn("清理过期工作流包记录失败", zap.Error(err))
+				log.Logger.Warn("Failed to clear expired workflow records", zap.Error(err))
 			}
 		}
 	}()
@@ -145,7 +145,7 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 	monitor.StartRetentionLoop(monitorRetention, log.Logger)
 
 	if err := handler.NewHITLManager(db, log.Logger).EnsureSchema(); err != nil {
-		log.Logger.Warn("初始化 HITL 表失败", zap.Error(err))
+		log.Logger.Warn("Initializing the HITL table failed", zap.Error(err))
 	}
 	hitlRetention := hitl.NewService(db, cfg, log.Logger)
 	hitlRetention.PurgeExpired()
@@ -214,7 +214,7 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 	var knowledgeHandler *handler.KnowledgeHandler
 
 	var knowledgeDBConn *database.DB
-	log.Logger.Debug("检查知识库配置", zap.Bool("enabled", cfg.Knowledge.Enabled))
+	log.Logger.Debug("Check knowledge base configuration", zap.Bool("enabled", cfg.Knowledge.Enabled))
 	if cfg.Knowledge.Enabled {
 		// 确定知识库数据库路径
 		knowledgeDBPath := cfg.Database.KnowledgeDBPath
@@ -224,20 +224,20 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 			// 使用独立的知识库数据库
 			// 确保目录存在
 			if err := os.MkdirAll(filepath.Dir(knowledgeDBPath), 0755); err != nil {
-				return nil, fmt.Errorf("创建知识库数据库目录失败: %w", err)
+				return nil, fmt.Errorf("Failed to create knowledge base database directory: %w", err)
 			}
 
 			var err error
 			knowledgeDBConn, err = database.NewKnowledgeDB(knowledgeDBPath, log.Logger)
 			if err != nil {
-				return nil, fmt.Errorf("初始化知识库数据库失败: %w", err)
+				return nil, fmt.Errorf("Failed to initialize knowledge base database: %w", err)
 			}
 			knowledgeDB = knowledgeDBConn.DB
-			log.Logger.Info("使用独立的知识库数据库", zap.String("path", knowledgeDBPath))
+			log.Logger.Info("Use of a stand-alone knowledge base database", zap.String("path", knowledgeDBPath))
 		} else {
 			// 向后兼容：使用会话数据库
 			knowledgeDB = db.DB
-			log.Logger.Info("使用会话数据库存储知识库数据（建议配置knowledge_db_path以分离数据）")
+			log.Logger.Info("Storage of knowledge base data using session database (recommended to configure knowledge_db_path to separate data)")
 		}
 
 		// 创建知识库管理器
@@ -254,20 +254,20 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 
 		embedder, err := knowledge.NewEmbedder(context.Background(), &cfg.Knowledge, &cfg.OpenAI, log.Logger)
 		if err != nil {
-			return nil, fmt.Errorf("初始化知识库嵌入器失败: %w", err)
+			return nil, fmt.Errorf("Initialization of the knowledge base embedr failed: %w", err)
 		}
 
 		// 创建检索器（Eino MultiQuery + 重排流水线）
 		retrievalConfig := knowledge.RetrievalConfigFromYAML(cfg.Knowledge.Retrieval)
 		knowledgeRetriever = knowledge.NewRetriever(knowledgeDB, embedder, retrievalConfig, log.Logger)
 		if err := knowledge.WireRetrieverPipeline(context.Background(), knowledgeRetriever, &cfg.OpenAI); err != nil {
-			return nil, fmt.Errorf("初始化知识库检索流水线失败: %w", err)
+			return nil, fmt.Errorf("Initialization of knowledge base to retrieve stream lines failed: %w", err)
 		}
 
 		// 创建索引器（Eino Compose 链）
 		knowledgeIndexer, err = knowledge.NewIndexer(context.Background(), knowledgeDB, embedder, log.Logger, &cfg.Knowledge)
 		if err != nil {
-			return nil, fmt.Errorf("初始化知识库索引器失败: %w", err)
+			return nil, fmt.Errorf("Initializing knowledge base indexer failed: %w", err)
 		}
 
 		// 注册知识检索工具到MCP服务器
@@ -276,27 +276,27 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 		// 创建知识库API处理器
 		knowledgeHandler = handler.NewKnowledgeHandler(knowledgeManager, knowledgeRetriever, knowledgeIndexer, db, log.Logger)
 		knowledgeHandler.SetAudit(auditSvc)
-		log.Logger.Info("知识库模块初始化完成", zap.Bool("handler_created", knowledgeHandler != nil))
+		log.Logger.Info("Initialization of knowledge base module completed", zap.Bool("handler_created", knowledgeHandler != nil))
 
 		// 扫描知识库并建立索引（异步）
 		go func() {
 			itemsToIndex, err := knowledgeManager.ScanKnowledgeBase()
 			if err != nil {
-				log.Logger.Warn("扫描知识库失败", zap.Error(err))
+				log.Logger.Warn("Failed to scan the knowledge base", zap.Error(err))
 				return
 			}
 
 			// 检查是否已有索引
 			hasIndex, err := knowledgeIndexer.HasIndex()
 			if err != nil {
-				log.Logger.Warn("检查索引状态失败", zap.Error(err))
+				log.Logger.Warn("Checking index status failed", zap.Error(err))
 				return
 			}
 
 			if hasIndex {
 				// 如果已有索引，只索引新添加或更新的项
 				if len(itemsToIndex) > 0 {
-					log.Logger.Info("检测到已有知识库索引，开始增量索引", zap.Int("count", len(itemsToIndex)))
+					log.Logger.Info("Detect existing knowledge base index and start incremental indexing", zap.Int("count", len(itemsToIndex)))
 					ctx := context.Background()
 					consecutiveFailures := 0
 					var firstFailureItemID string
@@ -311,12 +311,12 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 							if consecutiveFailures == 1 {
 								firstFailureItemID = itemID
 								firstFailureError = err
-								log.Logger.Warn("索引知识项失败", zap.String("itemId", itemID), zap.Error(err))
+								log.Logger.Warn("Index knowledge entry failed", zap.String("itemId", itemID), zap.Error(err))
 							}
 
 							// 如果连续失败2次，立即停止增量索引
 							if consecutiveFailures >= 2 {
-								log.Logger.Error("连续索引失败次数过多，立即停止增量索引",
+								log.Logger.Error("Too many consecutive index failures, stop the incremental index immediately",
 									zap.Int("consecutiveFailures", consecutiveFailures),
 									zap.Int("totalItems", len(itemsToIndex)),
 									zap.String("firstFailureItemId", firstFailureItemID),
@@ -334,18 +334,18 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 							firstFailureError = nil
 						}
 					}
-					log.Logger.Info("增量索引完成", zap.Int("totalItems", len(itemsToIndex)), zap.Int("failedCount", failedCount))
+					log.Logger.Info("Incremental index completion", zap.Int("totalItems", len(itemsToIndex)), zap.Int("failedCount", failedCount))
 				} else {
-					log.Logger.Info("检测到已有知识库索引，没有需要索引的新项或更新项")
+					log.Logger.Info("Index to an existing knowledge base detected, no new or updated entries requiring index")
 				}
 				return
 			}
 
 			// 冷启动：仅为尚无向量的知识项构建索引（与 IndexMissing 语义一致）
-			log.Logger.Info("未检测到知识库索引，开始自动构建索引")
+			log.Logger.Info("The knowledge base index was not detected and the index is automatically built")
 			ctx := context.Background()
 			if err := knowledgeIndexer.IndexMissing(ctx); err != nil {
-				log.Logger.Warn("自动构建知识库索引失败", zap.Error(err))
+				log.Logger.Warn("Failed to automatically build an index to the knowledge base", zap.Error(err))
 			}
 		}()
 	}
@@ -357,7 +357,7 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 	}
 
 	skillsDir := skillpackage.SkillsRootFromConfig(cfg.SkillsDir, configPath)
-	log.Logger.Debug("Skills 目录（Eino ADK skill 中间件 + Web 管理 API）", zap.String("skillsDir", skillsDir))
+	log.Logger.Debug("Skills Contents (Eino ADK skill Middle + Web Management API) ", zap.String("skillsDir", skillsDir))
 	configDir := filepath.Dir(configPath)
 	plantaskRel := strings.TrimSpace(cfg.MultiAgent.EinoMiddleware.PlantaskRelDir)
 	if plantaskRel == "" {
@@ -421,11 +421,11 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 		agentsDir = filepath.Join(configDir, agentsDir)
 	}
 	if err := os.MkdirAll(agentsDir, 0755); err != nil {
-		log.Logger.Warn("创建 agents 目录失败", zap.String("path", agentsDir), zap.Error(err))
+		log.Logger.Warn("Failed to create agents directory", zap.String("path", agentsDir), zap.Error(err))
 	}
 	markdownAgentsHandler := handler.NewMarkdownAgentsHandler(agentsDir)
 	markdownAgentsHandler.SetAudit(auditSvc)
-	log.Logger.Debug("多代理 Markdown 子 Agent 目录", zap.String("agentsDir", agentsDir))
+	log.Logger.Debug("Multi-Agent Markdown Subdirectorate", zap.String("agentsDir", agentsDir))
 
 	// 创建处理器
 	agentHandler := handler.NewAgentHandler(agent, db, cfg, log.Logger)
@@ -580,7 +580,7 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 			configHandler.SetKnowledgeToolRegistrar(registrar)
 			// 设置检索器更新器，以便在ApplyConfig时更新检索器配置
 			configHandler.SetRetrieverUpdater(app.knowledgeRetriever)
-			log.Logger.Info("动态初始化后已设置知识库工具注册器和检索器更新器")
+			log.Logger.Info("A knowledge-base tool register and a searcher updateer have been set up after dynamic initialization")
 		}
 
 		return knowledgeHandler, nil
@@ -674,7 +674,7 @@ func (a *App) mcpHandlerWithAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if subtle.ConstantTimeCompare([]byte(r.Header.Get(cfg.AuthHeader)), []byte(cfg.AuthHeaderValue)) != 1 {
-		a.logger.Logger.Debug("MCP 鉴权失败：header 缺失或值不匹配", zap.String("header", cfg.AuthHeader))
+		a.logger.Logger.Debug("MCP power failure: header missing or not matched", zap.String("header", cfg.AuthHeader))
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte(`{"error":"unauthorized"}`))
@@ -700,7 +700,7 @@ func (a *App) RunWithContext(ctx context.Context) error {
 	var mcpServer *http.Server
 	if a.config.MCP.Enabled {
 		mcpAddr := fmt.Sprintf("%s:%d", a.config.MCP.Host, a.config.MCP.Port)
-		a.logger.Info("启动MCP服务器", zap.String("address", mcpAddr))
+		a.logger.Info("Start MCP server", zap.String("address", mcpAddr))
 
 		mux := http.NewServeMux()
 		mux.HandleFunc("/mcp", a.mcpHandlerWithAuth)
@@ -708,7 +708,7 @@ func (a *App) RunWithContext(ctx context.Context) error {
 		mcpServer = &http.Server{Addr: mcpAddr, Handler: mux}
 		go func() {
 			if err := mcpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				a.logger.Error("MCP服务器启动失败", zap.Error(err))
+				a.logger.Error("MCP server startup failed", zap.Error(err))
 			}
 		}()
 	}
@@ -726,24 +726,24 @@ func (a *App) RunWithContext(ctx context.Context) error {
 	if tlsMode != mainTLSOff {
 		srv.TLSConfig = tlsConf
 		if err := http2.ConfigureServer(srv, &http2.Server{}); err != nil {
-			return fmt.Errorf("主服务 HTTP/2 配置失败: %w", err)
+			return fmt.Errorf("Main service HTTP/2 configuration failed: %w", err)
 		}
 		switch tlsMode {
 		case mainTLSFromFiles:
-			a.logger.Debug("启动 HTTPS 主服务（已启用 HTTP/2 协商）",
+			a.logger.Debug("Start HTTPS Main Service (HTTP/2 Consultation enabled)",
 				zap.String("address", addr),
 				zap.String("cert", certFile),
 			)
 		case mainTLSInMemorySelfSigned:
-			a.logger.Debug("启动 HTTPS 主服务（内存自签证书，仅测试；已启用 HTTP/2 协商）",
+			a.logger.Debug("Start HTTPS main service (RAMS visa, test only; HTTP/2 consultation enabled)",
 				zap.String("address", addr),
 			)
 		}
 		if httpRedirect {
-			a.logger.Debug("已启用 HTTP→HTTPS 自动跳转（同端口嗅探分流）", zap.String("address", addr))
+			a.logger.Debug("Enabled HTTP→HTTPS autojumping (port sniffing diversion)", zap.String("address", addr))
 		}
 	} else {
-		a.logger.Debug("启动 HTTP 主服务", zap.String("address", addr))
+		a.logger.Debug("Start HTTP Main Service", zap.String("address", addr))
 	}
 
 	// 监听 context 取消，优雅关闭 HTTP 服务器
@@ -753,14 +753,14 @@ func (a *App) RunWithContext(ctx context.Context) error {
 		defer cancel()
 		if mainMux != nil {
 			if err := mainMux.Shutdown(shutdownCtx); err != nil {
-				a.logger.Error("HTTP/HTTPS 分流服务器关闭失败", zap.Error(err))
+				a.logger.Error("HTTP/HTTPS diversion server shut down failed", zap.Error(err))
 			}
 		} else if err := srv.Shutdown(shutdownCtx); err != nil {
-			a.logger.Error("HTTP服务器关闭失败", zap.Error(err))
+			a.logger.Error("HTTP server shut down failed", zap.Error(err))
 		}
 		if mcpServer != nil {
 			if err := mcpServer.Shutdown(shutdownCtx); err != nil {
-				a.logger.Error("MCP服务器关闭失败", zap.Error(err))
+				a.logger.Error("MCP server shut down failed", zap.Error(err))
 			}
 		}
 	}()
@@ -771,7 +771,7 @@ func (a *App) RunWithContext(ctx context.Context) error {
 		var tlsConfReady *tls.Config
 		tlsConfReady, err = ensureMainTLSConfigCerts(tlsMode, tlsConf, certFile, keyFile)
 		if err != nil {
-			return fmt.Errorf("加载 TLS 证书: %w", err)
+			return fmt.Errorf("Load TLS certificate: %w", err)
 		}
 		srv.TLSConfig = tlsConfReady
 		var ln net.Listener
@@ -835,14 +835,14 @@ func (a *App) Shutdown() {
 	// 关闭知识库数据库连接（如果使用独立数据库）
 	if a.knowledgeDB != nil {
 		if err := a.knowledgeDB.Close(); err != nil {
-			a.logger.Logger.Warn("关闭知识库数据库连接失败", zap.Error(err))
+			a.logger.Logger.Warn("Failed to close knowledge base database connection", zap.Error(err))
 		}
 	}
 
 	// 关闭主数据库连接
 	if a.db != nil {
 		if err := a.db.Close(); err != nil {
-			a.logger.Logger.Warn("关闭主数据库连接失败", zap.Error(err))
+			a.logger.Logger.Warn("Failed to close main database connection", zap.Error(err))
 		}
 	}
 }
@@ -999,7 +999,7 @@ func setupRoutes(
 		if auditSvc != nil {
 			auditSvc.Record(c, audit.Entry{
 				Level: "warn", Category: "rbac", Action: "access_denied", Result: "failure",
-				Message: "RBAC 拒绝访问", ResourceType: "route", ResourceID: c.FullPath(),
+				Message: "RBAC denied access", ResourceType: "route", ResourceID: c.FullPath(),
 				Detail: map[string]interface{}{"reason": reason, "permission": permission, "method": c.Request.Method},
 			})
 		}
@@ -1192,7 +1192,7 @@ func setupRoutes(
 					c.JSON(http.StatusOK, gin.H{
 						"categories": []string{},
 						"enabled":    false,
-						"message":    "知识库功能未启用，请前往系统设置启用知识检索功能",
+						"message":    "The knowledge base function is not enabled, go to the system settings to enable the knowledge search function",
 					})
 					return
 				}
@@ -1203,7 +1203,7 @@ func setupRoutes(
 					c.JSON(http.StatusOK, gin.H{
 						"items":   []interface{}{},
 						"enabled": false,
-						"message": "知识库功能未启用，请前往系统设置启用知识检索功能",
+						"message": "The knowledge base function is not enabled, go to the system settings to enable the knowledge search function",
 					})
 					return
 				}
@@ -1213,7 +1213,7 @@ func setupRoutes(
 				if app.knowledgeHandler == nil {
 					c.JSON(http.StatusOK, gin.H{
 						"enabled": false,
-						"message": "知识库功能未启用，请前往系统设置启用知识检索功能",
+						"message": "The knowledge base function is not enabled, go to the system settings to enable the knowledge search function",
 					})
 					return
 				}
@@ -1223,7 +1223,7 @@ func setupRoutes(
 				if app.knowledgeHandler == nil {
 					c.JSON(http.StatusOK, gin.H{
 						"enabled": false,
-						"error":   "知识库功能未启用，请前往系统设置启用知识检索功能",
+						"error":   "The knowledge base function is not enabled, go to the system settings to enable the knowledge search function",
 					})
 					return
 				}
@@ -1233,7 +1233,7 @@ func setupRoutes(
 				if app.knowledgeHandler == nil {
 					c.JSON(http.StatusOK, gin.H{
 						"enabled": false,
-						"error":   "知识库功能未启用，请前往系统设置启用知识检索功能",
+						"error":   "The knowledge base function is not enabled, go to the system settings to enable the knowledge search function",
 					})
 					return
 				}
@@ -1243,7 +1243,7 @@ func setupRoutes(
 				if app.knowledgeHandler == nil {
 					c.JSON(http.StatusOK, gin.H{
 						"enabled": false,
-						"error":   "知识库功能未启用，请前往系统设置启用知识检索功能",
+						"error":   "The knowledge base function is not enabled, go to the system settings to enable the knowledge search function",
 					})
 					return
 				}
@@ -1257,7 +1257,7 @@ func setupRoutes(
 						"indexed_items":    0,
 						"progress_percent": 0,
 						"is_complete":      false,
-						"message":          "知识库功能未启用，请前往系统设置启用知识检索功能",
+						"message":          "The knowledge base function is not enabled, go to the system settings to enable the knowledge search function",
 					})
 					return
 				}
@@ -1267,7 +1267,7 @@ func setupRoutes(
 				if app.knowledgeHandler == nil {
 					c.JSON(http.StatusOK, gin.H{
 						"enabled": false,
-						"error":   "知识库功能未启用，请前往系统设置启用知识检索功能",
+						"error":   "The knowledge base function is not enabled, go to the system settings to enable the knowledge search function",
 					})
 					return
 				}
@@ -1277,7 +1277,7 @@ func setupRoutes(
 				if app.knowledgeHandler == nil {
 					c.JSON(http.StatusOK, gin.H{
 						"enabled": false,
-						"error":   "知识库功能未启用，请前往系统设置启用知识检索功能",
+						"error":   "The knowledge base function is not enabled, go to the system settings to enable the knowledge search function",
 					})
 					return
 				}
@@ -1288,7 +1288,7 @@ func setupRoutes(
 					c.JSON(http.StatusOK, gin.H{
 						"logs":    []interface{}{},
 						"enabled": false,
-						"message": "知识库功能未启用，请前往系统设置启用知识检索功能",
+						"message": "The knowledge base function is not enabled, go to the system settings to enable the knowledge search function",
 					})
 					return
 				}
@@ -1298,7 +1298,7 @@ func setupRoutes(
 				if app.knowledgeHandler == nil {
 					c.JSON(http.StatusOK, gin.H{
 						"enabled": false,
-						"error":   "知识库功能未启用，请前往系统设置启用知识检索功能",
+						"error":   "The knowledge base function is not enabled, go to the system settings to enable the knowledge search function",
 					})
 					return
 				}
@@ -1309,7 +1309,7 @@ func setupRoutes(
 					c.JSON(http.StatusOK, gin.H{
 						"results": []interface{}{},
 						"enabled": false,
-						"message": "知识库功能未启用，请前往系统设置启用知识检索功能",
+						"message": "The knowledge base function is not enabled, go to the system settings to enable the knowledge search function",
 					})
 					return
 				}
@@ -1321,7 +1321,7 @@ func setupRoutes(
 						"enabled":          false,
 						"total_categories": 0,
 						"total_items":      0,
-						"message":          "知识库功能未启用，请前往系统设置启用知识检索功能",
+						"message":          "The knowledge base function is not enabled, go to the system settings to enable the knowledge search function",
 					})
 					return
 				}
@@ -1382,7 +1382,7 @@ func setupRoutes(
 			if app.c2Manager == nil {
 				c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
 					"error":   "c2_disabled",
-					"message": "C2 功能已在系统设置中关闭",
+					"message": "C2 functionality is closed in system settings",
 					"enabled": false,
 				})
 				return
@@ -1510,25 +1510,25 @@ func setupRoutes(
 // registerWebshellTools 注册 WebShell 相关 MCP 工具，供 AI 助手在指定连接上执行命令与文件操作
 func registerWebshellTools(mcpServer *mcp.Server, db *database.DB, webshellHandler *handler.WebShellHandler, logger *zap.Logger) {
 	if db == nil || webshellHandler == nil {
-		logger.Warn("跳过 WebShell 工具注册：db 或 webshellHandler 为空")
+		logger.Warn("Skip WebShell Tool Registration: db or webshellHandler Empty")
 		return
 	}
 
 	// webshell_exec
 	execTool := mcp.Tool{
 		Name:             builtin.ToolWebshellExec,
-		Description:      "在指定的 WebShell 连接上执行一条系统命令，返回命令的标准输出。connection_id 由用户在 AI 助手上下文中选定。",
-		ShortDescription: "在 WebShell 连接上执行命令",
+		Description:      "In Specified WebShell Connect to execute a system command, Returns the standard output of the command.connection_id By User AI Selection of Assistant Context.",
+		ShortDescription: "Execute command on WebShell connection",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"connection_id": map[string]interface{}{
 					"type":        "string",
-					"description": "WebShell 连接 ID（如 ws_xxx）",
+					"description": "WebShell connection ID (for example ws_xxx) ",
 				},
 				"command": map[string]interface{}{
 					"type":        "string",
-					"description": "要执行的系统命令",
+					"description": "System command to execute",
 				},
 			},
 			"required": []string{"connection_id", "command"},
@@ -1538,18 +1538,18 @@ func registerWebshellTools(mcpServer *mcp.Server, db *database.DB, webshellHandl
 		cid, _ := args["connection_id"].(string)
 		cmd, _ := args["command"].(string)
 		if cid == "" || cmd == "" {
-			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "connection_id 和 command 均为必填"}}, IsError: true}, nil
+			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "connection_id and command It's all mandatory."}}, IsError: true}, nil
 		}
 		conn, err := db.GetWebshellConnection(cid)
 		if err != nil || conn == nil {
-			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "未找到该 WebShell 连接或查询失败"}}, IsError: true}, nil
+			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "Not found WebShell Connection or query failed"}}, IsError: true}, nil
 		}
 		output, ok, errMsg := webshellHandler.ExecWithConnection(conn, cmd)
 		if errMsg != "" {
 			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: errMsg}}, IsError: true}, nil
 		}
 		if !ok {
-			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "HTTP 非 200，输出:\n" + output}}, IsError: false}, nil
+			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "HTTP non-200, output:\n" + output}}, IsError: false}, nil
 		}
 		return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: output}}, IsError: false}, nil
 	}
@@ -1558,13 +1558,13 @@ func registerWebshellTools(mcpServer *mcp.Server, db *database.DB, webshellHandl
 	// webshell_file_list
 	listTool := mcp.Tool{
 		Name:             builtin.ToolWebshellFileList,
-		Description:      "在指定 WebShell 连接上列出目录内容。path 默认为当前目录（.）。",
-		ShortDescription: "在 WebShell 上列出目录",
+		Description:      "Assign WebShell Link to list directory contents.path Default as Current Directory (.) .",
+		ShortDescription: "List directories on WebShell",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"connection_id": map[string]interface{}{"type": "string", "description": "WebShell 连接 ID"},
-				"path":          map[string]interface{}{"type": "string", "description": "目录路径，默认 ."},
+				"connection_id": map[string]interface{}{"type": "string", "description": "WebShell Connect ID"},
+				"path":          map[string]interface{}{"type": "string", "description": "Directory path, default."},
 			},
 			"required": []string{"connection_id"},
 		},
@@ -1573,11 +1573,11 @@ func registerWebshellTools(mcpServer *mcp.Server, db *database.DB, webshellHandl
 		cid, _ := args["connection_id"].(string)
 		path, _ := args["path"].(string)
 		if cid == "" {
-			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "connection_id 必填"}}, IsError: true}, nil
+			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "connection_id required"}}, IsError: true}, nil
 		}
 		conn, err := db.GetWebshellConnection(cid)
 		if err != nil || conn == nil {
-			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "未找到该 WebShell 连接"}}, IsError: true}, nil
+			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "No WebShell connection found"}}, IsError: true}, nil
 		}
 		output, ok, errMsg := webshellHandler.FileOpWithConnection(conn, "list", path, "", "")
 		if errMsg != "" {
@@ -1590,13 +1590,13 @@ func registerWebshellTools(mcpServer *mcp.Server, db *database.DB, webshellHandl
 	// webshell_file_read
 	readTool := mcp.Tool{
 		Name:             builtin.ToolWebshellFileRead,
-		Description:      "在指定 WebShell 连接上读取文件内容。",
-		ShortDescription: "在 WebShell 上读取文件",
+		Description:      "Reads the contents of the file on the specified WebShell connection.",
+		ShortDescription: "Read files on WebShell",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"connection_id": map[string]interface{}{"type": "string", "description": "WebShell 连接 ID"},
-				"path":          map[string]interface{}{"type": "string", "description": "文件路径"},
+				"connection_id": map[string]interface{}{"type": "string", "description": "WebShell Connect ID"},
+				"path":          map[string]interface{}{"type": "string", "description": "File Path"},
 			},
 			"required": []string{"connection_id", "path"},
 		},
@@ -1605,11 +1605,11 @@ func registerWebshellTools(mcpServer *mcp.Server, db *database.DB, webshellHandl
 		cid, _ := args["connection_id"].(string)
 		path, _ := args["path"].(string)
 		if cid == "" || path == "" {
-			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "connection_id 和 path 必填"}}, IsError: true}, nil
+			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "connection_id and path required"}}, IsError: true}, nil
 		}
 		conn, err := db.GetWebshellConnection(cid)
 		if err != nil || conn == nil {
-			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "未找到该 WebShell 连接"}}, IsError: true}, nil
+			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "No WebShell connection found"}}, IsError: true}, nil
 		}
 		output, ok, errMsg := webshellHandler.FileOpWithConnection(conn, "read", path, "", "")
 		if errMsg != "" {
@@ -1622,14 +1622,14 @@ func registerWebshellTools(mcpServer *mcp.Server, db *database.DB, webshellHandl
 	// webshell_file_write
 	writeTool := mcp.Tool{
 		Name:             builtin.ToolWebshellFileWrite,
-		Description:      "在指定 WebShell 连接上写入文件内容（会覆盖已有文件）。",
-		ShortDescription: "在 WebShell 上写入文件",
+		Description:      "Writes the contents of the file on the specified WebShell connection (will overwrite existing files).",
+		ShortDescription: "Write files on WebShell",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"connection_id": map[string]interface{}{"type": "string", "description": "WebShell 连接 ID"},
-				"path":          map[string]interface{}{"type": "string", "description": "文件路径"},
-				"content":       map[string]interface{}{"type": "string", "description": "要写入的内容"},
+				"connection_id": map[string]interface{}{"type": "string", "description": "WebShell Connect ID"},
+				"path":          map[string]interface{}{"type": "string", "description": "File Path"},
+				"content":       map[string]interface{}{"type": "string", "description": "Contents to write"},
 			},
 			"required": []string{"connection_id", "path", "content"},
 		},
@@ -1639,30 +1639,30 @@ func registerWebshellTools(mcpServer *mcp.Server, db *database.DB, webshellHandl
 		path, _ := args["path"].(string)
 		content, _ := args["content"].(string)
 		if cid == "" || path == "" {
-			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "connection_id 和 path 必填"}}, IsError: true}, nil
+			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "connection_id and path required"}}, IsError: true}, nil
 		}
 		conn, err := db.GetWebshellConnection(cid)
 		if err != nil || conn == nil {
-			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "未找到该 WebShell 连接"}}, IsError: true}, nil
+			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "No WebShell connection found"}}, IsError: true}, nil
 		}
 		output, ok, errMsg := webshellHandler.FileOpWithConnection(conn, "write", path, content, "")
 		if errMsg != "" {
 			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: errMsg}}, IsError: true}, nil
 		}
 		if !ok {
-			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "写入可能失败，输出:\n" + output}}, IsError: false}, nil
+			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "Writing may fail, output:\n" + output}}, IsError: false}, nil
 		}
-		return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "写入成功\n" + output}}, IsError: false}, nil
+		return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "Writing succeeded\n" + output}}, IsError: false}, nil
 	}
 	mcpServer.RegisterTool(writeTool, writeHandler)
 
-	logger.Debug("WebShell 工具注册成功")
+	logger.Debug("WebShell tool registered successfully")
 }
 
 // registerWebshellManagementTools 注册 WebShell 连接管理 MCP 工具
 func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, webshellHandler *handler.WebShellHandler, logger *zap.Logger) {
 	if db == nil {
-		logger.Warn("跳过 WebShell 管理工具注册：db 为空")
+		logger.Warn("Skip WebShell management tool register: db is empty")
 		return
 	}
 	projectIDFromToolArgs := func(ctx context.Context, args map[string]interface{}) string {
@@ -1687,7 +1687,7 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 		}
 		if !db.UserCanAccessResource(principal.UserID, principal.ScopeFor(permission), "project", projectID) {
 			return &mcp.ToolResult{
-				Content: []mcp.Content{{Type: "text", Text: "无权访问项目: " + projectID}},
+				Content: []mcp.Content{{Type: "text", Text: "No access to projects: " + projectID}},
 				IsError: true,
 			}
 		}
@@ -1697,14 +1697,14 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 	// manage_webshell_list - 列出所有 webshell 连接
 	listTool := mcp.Tool{
 		Name:             builtin.ToolManageWebshellList,
-		Description:      "列出已保存的 WebShell 连接，返回连接ID、URL、类型、所属项目、备注等信息。默认按当前对话项目边界过滤：项目对话看本项目，未绑定项目的对话看未绑定连接；显式传 project_id 时按指定项目过滤。",
-		ShortDescription: "列出所有 WebShell 连接",
+		Description:      "Lists the saved WebShell connections, returns information about connections to ID, URLs, types, items to which you belong, notes, etc.. Defaultly filters the lines of the current dialogue item: the dialogue on the project is read on the project, the dialogue on which you have not bound is not tied; filters by the specified item when you have a visible project_id.",
+		ShortDescription: "List all WebShell connections",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"project_id": map[string]interface{}{
 					"type":        "string",
-					"description": "项目 ID；不填时在项目会话中默认使用当前项目。",
+					"description": "Item ID; Default to use the current item in the project session when not filled in.",
 				},
 			},
 		},
@@ -1722,37 +1722,37 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 			}
 			connections, err = db.ListWebshellConnectionsForAccess(principal.UserID, principal.ScopeFor("webshell:read"), projectID)
 		} else {
-			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "缺少认证身份"}}, IsError: true}, nil
+			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "Lack of authentication"}}, IsError: true}, nil
 		}
 		if err != nil {
 			return &mcp.ToolResult{
-				Content: []mcp.Content{{Type: "text", Text: "获取连接列表失败: " + err.Error()}},
+				Content: []mcp.Content{{Type: "text", Text: "Failed to list connections: " + err.Error()}},
 				IsError: true,
 			}, nil
 		}
 		if len(connections) == 0 {
 			return &mcp.ToolResult{
-				Content: []mcp.Content{{Type: "text", Text: "暂无 WebShell 连接"}},
+				Content: []mcp.Content{{Type: "text", Text: "WebShell connection is not available"}},
 				IsError: false,
 			}, nil
 		}
 		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("找到 %d 个 WebShell 连接：\n\n", len(connections)))
+		sb.WriteString(fmt.Sprintf("Found %d WebShell connection:\n\n", len(connections)))
 		for _, conn := range connections {
 			sb.WriteString(fmt.Sprintf("ID: %s\n", conn.ID))
 			sb.WriteString(fmt.Sprintf("  URL: %s\n", conn.URL))
-			sb.WriteString(fmt.Sprintf("  类型: %s\n", conn.Type))
-			sb.WriteString(fmt.Sprintf("  请求方式: %s\n", conn.Method))
-			sb.WriteString(fmt.Sprintf("  命令参数: %s\n", conn.CmdParam))
+			sb.WriteString(fmt.Sprintf("  Type: %s\n", conn.Type))
+			sb.WriteString(fmt.Sprintf("  HTTP method: %s\n", conn.Method))
+			sb.WriteString(fmt.Sprintf("  command parameter: %s\n", conn.CmdParam))
 			if conn.ProjectID != "" {
-				sb.WriteString(fmt.Sprintf("  项目ID: %s\n", conn.ProjectID))
+				sb.WriteString(fmt.Sprintf("  Item ID: %s\n", conn.ProjectID))
 			} else {
-				sb.WriteString("  项目: 未绑定\n")
+				sb.WriteString("  Item: Unbound\n")
 			}
 			if conn.Remark != "" {
-				sb.WriteString(fmt.Sprintf("  备注: %s\n", conn.Remark))
+				sb.WriteString(fmt.Sprintf("  Remarks: %s\n", conn.Remark))
 			}
-			sb.WriteString(fmt.Sprintf("  创建时间: %s\n", conn.CreatedAt.Format("2006-01-02 15:04:05")))
+			sb.WriteString(fmt.Sprintf("  Synchronising \"%s\"\n", conn.CreatedAt.Format("2006-01-02 15:04:05")))
 			sb.WriteString("\n")
 		}
 		return &mcp.ToolResult{
@@ -1765,36 +1765,36 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 	// manage_webshell_add - 添加新的 webshell 连接
 	addTool := mcp.Tool{
 		Name:             builtin.ToolManageWebshellAdd,
-		Description:      "添加新的 WebShell 连接到管理系统。支持 PHP、ASP、ASPX、JSP 等类型的一句话木马。",
-		ShortDescription: "添加 WebShell 连接",
+		Description:      "Add New WebShell Connect to Management System.Support PHP, ASP, ASPX, JSP A kind of wooden horse..",
+		ShortDescription: "Add WebShell Connection",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"url": map[string]interface{}{
 					"type":        "string",
-					"description": "Shell 地址，如 http://target.com/shell.php（必填）",
+					"description": "Shell address, e. g. http://target.com/shell.php (mandatory)",
 				},
 				"password": map[string]interface{}{
 					"type":        "string",
-					"description": "连接密码/密钥，如冰蝎/蚁剑的连接密码",
+					"description": "Connect passwords/keys, such as those for scorpion/ant swords",
 				},
 				"type": map[string]interface{}{
 					"type":        "string",
-					"description": "Shell 类型：php、asp、aspx、jsp，默认为 php",
+					"description": "Shell type: php,asp,aspx, jsp, default as php",
 					"enum":        []string{"php", "asp", "aspx", "jsp"},
 				},
 				"method": map[string]interface{}{
 					"type":        "string",
-					"description": "请求方式：GET 或 POST，默认为 POST",
+					"description": "Request mode: GET or POST, default POST",
 					"enum":        []string{"GET", "POST"},
 				},
 				"cmd_param": map[string]interface{}{
 					"type":        "string",
-					"description": "命令参数名，不填默认为 cmd",
+					"description": "command parameter name, do not fill default as cmd",
 				},
 				"remark": map[string]interface{}{
 					"type":        "string",
-					"description": "备注，便于识别的备注名",
+					"description": "Remarks, user-identifiable notes",
 				},
 			},
 			"required": []string{"url"},
@@ -1804,7 +1804,7 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 		urlStr, _ := args["url"].(string)
 		if urlStr == "" {
 			return &mcp.ToolResult{
-				Content: []mcp.Content{{Type: "text", Text: "错误: url 参数必填"}},
+				Content: []mcp.Content{{Type: "text", Text: "Error: url parameters filled"}},
 				IsError: true,
 			}, nil
 		}
@@ -1825,7 +1825,7 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 		remark, _ := args["remark"].(string)
 		principal, ok := authctx.PrincipalFromContext(ctx)
 		if !ok {
-			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "缺少认证身份"}}, IsError: true}, nil
+			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "Lack of authentication"}}, IsError: true}, nil
 		}
 		projectID := projectIDFromToolArgs(ctx, args)
 		if result := authorizeWebshellToolProject(principal, "webshell:write", projectID); result != nil {
@@ -1848,21 +1848,21 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 
 		if err := db.CreateWebshellConnection(conn); err != nil {
 			return &mcp.ToolResult{
-				Content: []mcp.Content{{Type: "text", Text: "添加 WebShell 连接失败: " + err.Error()}},
+				Content: []mcp.Content{{Type: "text", Text: "Add WebShell Connection failed: " + err.Error()}},
 				IsError: true,
 			}, nil
 		}
 		_ = db.SetResourceOwner("webshell", conn.ID, principal.UserID)
 		_ = db.AssignResourceToUser(principal.UserID, "webshell", conn.ID)
-		projectLine := "项目: 未绑定"
+		projectLine := "Item: Unbound"
 		if conn.ProjectID != "" {
-			projectLine = "项目ID: " + conn.ProjectID
+			projectLine = "Project ID: " + conn.ProjectID
 		}
 
 		return &mcp.ToolResult{
 			Content: []mcp.Content{{
 				Type: "text",
-				Text: fmt.Sprintf("WebShell 连接添加成功！\n\n连接ID: %s\nURL: %s\n类型: %s\n请求方式: %s\n命令参数: %s\n%s", conn.ID, conn.URL, conn.Type, conn.Method, conn.CmdParam, projectLine),
+				Text: fmt.Sprintf("WebShell connection added.\n\nConnection ID: %s\nURL: %s\nType: %s\nHTTP method: %s\nCommand parameter: %s\n%s", conn.ID, conn.URL, conn.Type, conn.Method, conn.CmdParam, projectLine),
 			}},
 			IsError: false,
 		}, nil
@@ -1872,44 +1872,44 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 	// manage_webshell_update - 更新 webshell 连接
 	updateTool := mcp.Tool{
 		Name:             builtin.ToolManageWebshellUpdate,
-		Description:      "更新已存在的 WebShell 连接信息。",
-		ShortDescription: "更新 WebShell 连接",
+		Description:      "Updates the existing WebShell connection information.",
+		ShortDescription: "Update WebShell Connection",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"connection_id": map[string]interface{}{
 					"type":        "string",
-					"description": "要更新的 WebShell 连接 ID（必填）",
+					"description": "WebShell Connection ID to Update (Prescribed)",
 				},
 				"url": map[string]interface{}{
 					"type":        "string",
-					"description": "新的 Shell 地址",
+					"description": "New Shell Address",
 				},
 				"password": map[string]interface{}{
 					"type":        "string",
-					"description": "新的连接密码/密钥",
+					"description": "New connection password/key",
 				},
 				"type": map[string]interface{}{
 					"type":        "string",
-					"description": "新的 Shell 类型：php、asp、aspx、jsp",
+					"description": "New Shell Type: php,asp,aspx, jsp",
 					"enum":        []string{"php", "asp", "aspx", "jsp"},
 				},
 				"method": map[string]interface{}{
 					"type":        "string",
-					"description": "新的请求方式：GET 或 POST",
+					"description": "New request mode: GET or POST",
 					"enum":        []string{"GET", "POST"},
 				},
 				"cmd_param": map[string]interface{}{
 					"type":        "string",
-					"description": "新的命令参数名",
+					"description": "New command parameter name",
 				},
 				"remark": map[string]interface{}{
 					"type":        "string",
-					"description": "新的备注",
+					"description": "New Remarks",
 				},
 				"project_id": map[string]interface{}{
 					"type":        "string",
-					"description": "新的所属项目 ID；传空字符串可取消绑定。",
+					"description": "New item ID; empty string to untie.",
 				},
 			},
 			"required": []string{"connection_id"},
@@ -1919,7 +1919,7 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 		connID, _ := args["connection_id"].(string)
 		if connID == "" {
 			return &mcp.ToolResult{
-				Content: []mcp.Content{{Type: "text", Text: "错误: connection_id 参数必填"}},
+				Content: []mcp.Content{{Type: "text", Text: "Error: connection_id Parameters must be filled"}},
 				IsError: true,
 			}, nil
 		}
@@ -1928,7 +1928,7 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 		existing, err := db.GetWebshellConnection(connID)
 		if err != nil || existing == nil {
 			return &mcp.ToolResult{
-				Content: []mcp.Content{{Type: "text", Text: "未找到指定的 WebShell 连接: " + connID}},
+				Content: []mcp.Content{{Type: "text", Text: "No specified WebShell connection found: " + connID}},
 				IsError: true,
 			}, nil
 		}
@@ -1957,7 +1957,7 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 			if projectID != "" {
 				principal, ok := authctx.PrincipalFromContext(ctx)
 				if !ok {
-					return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "缺少认证身份"}}, IsError: true}, nil
+					return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "Lack of authentication"}}, IsError: true}, nil
 				}
 				if result := authorizeWebshellToolProject(principal, "webshell:write", projectID); result != nil {
 					return result, nil
@@ -1968,7 +1968,7 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 
 		if err := db.UpdateWebshellConnection(existing); err != nil {
 			return &mcp.ToolResult{
-				Content: []mcp.Content{{Type: "text", Text: "更新 WebShell 连接失败: " + err.Error()}},
+				Content: []mcp.Content{{Type: "text", Text: "Update of WebShell connection failed: " + err.Error()}},
 				IsError: true,
 			}, nil
 		}
@@ -1976,7 +1976,7 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 		return &mcp.ToolResult{
 			Content: []mcp.Content{{
 				Type: "text",
-				Text: fmt.Sprintf("WebShell 连接更新成功！\n\n连接ID: %s\nURL: %s\n类型: %s\n请求方式: %s\n命令参数: %s\n项目ID: %s\n备注: %s", existing.ID, existing.URL, existing.Type, existing.Method, existing.CmdParam, existing.ProjectID, existing.Remark),
+				Text: fmt.Sprintf("WebShell connection updated.\n\nConnection ID: %s\nURL: %s\nType: %s\nHTTP method: %s\nCommand parameter: %s\nProject ID: %s\nNotes: %s", existing.ID, existing.URL, existing.Type, existing.Method, existing.CmdParam, existing.ProjectID, existing.Remark),
 			}},
 			IsError: false,
 		}, nil
@@ -1986,14 +1986,14 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 	// manage_webshell_delete - 删除 webshell 连接
 	deleteTool := mcp.Tool{
 		Name:             builtin.ToolManageWebshellDelete,
-		Description:      "删除指定的 WebShell 连接。",
-		ShortDescription: "删除 WebShell 连接",
+		Description:      "Deletes the specified WebShell connection.",
+		ShortDescription: "Delete WebShell connections",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"connection_id": map[string]interface{}{
 					"type":        "string",
-					"description": "要删除的 WebShell 连接 ID（必填）",
+					"description": "WebShell Connection ID to delete (required)",
 				},
 			},
 			"required": []string{"connection_id"},
@@ -2003,14 +2003,14 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 		connID, _ := args["connection_id"].(string)
 		if connID == "" {
 			return &mcp.ToolResult{
-				Content: []mcp.Content{{Type: "text", Text: "错误: connection_id 参数必填"}},
+				Content: []mcp.Content{{Type: "text", Text: "Error: connection_id Parameters must be filled"}},
 				IsError: true,
 			}, nil
 		}
 
 		if err := db.DeleteWebshellConnection(connID); err != nil {
 			return &mcp.ToolResult{
-				Content: []mcp.Content{{Type: "text", Text: "删除 WebShell 连接失败: " + err.Error()}},
+				Content: []mcp.Content{{Type: "text", Text: "Remove WebShell connection failed: " + err.Error()}},
 				IsError: true,
 			}, nil
 		}
@@ -2018,7 +2018,7 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 		return &mcp.ToolResult{
 			Content: []mcp.Content{{
 				Type: "text",
-				Text: fmt.Sprintf("WebShell 连接 %s 已成功删除", connID),
+				Text: fmt.Sprintf("WebShell connection %s successfully deleted", connID),
 			}},
 			IsError: false,
 		}, nil
@@ -2028,18 +2028,18 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 	// manage_webshell_test - 测试 webshell 连接
 	testTool := mcp.Tool{
 		Name:             builtin.ToolManageWebshellTest,
-		Description:      "测试指定的 WebShell 连接是否可用，会尝试执行一个简单的命令（如 whoami 或 dir）。",
-		ShortDescription: "测试 WebShell 连接",
+		Description:      "Tests if the specified WebShell connection is available and attempts to execute a simple command (e. g. whoami or dir).",
+		ShortDescription: "Test WebShell Connection",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"connection_id": map[string]interface{}{
 					"type":        "string",
-					"description": "要测试的 WebShell 连接 ID（必填）",
+					"description": "WebShell Connection ID to Test (Prescribed)",
 				},
 				"command": map[string]interface{}{
 					"type":        "string",
-					"description": "测试命令，默认为 whoami（Linux）或 dir（Windows）",
+					"description": "Test command, default to whoami(Linux) or dir(Windows)",
 				},
 			},
 			"required": []string{"connection_id"},
@@ -2049,7 +2049,7 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 		connID, _ := args["connection_id"].(string)
 		if connID == "" {
 			return &mcp.ToolResult{
-				Content: []mcp.Content{{Type: "text", Text: "错误: connection_id 参数必填"}},
+				Content: []mcp.Content{{Type: "text", Text: "Error: connection_id Parameters must be filled"}},
 				IsError: true,
 			}, nil
 		}
@@ -2058,7 +2058,7 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 		conn, err := db.GetWebshellConnection(connID)
 		if err != nil || conn == nil {
 			return &mcp.ToolResult{
-				Content: []mcp.Content{{Type: "text", Text: "未找到指定的 WebShell 连接: " + connID}},
+				Content: []mcp.Content{{Type: "text", Text: "No specified WebShell connection found: " + connID}},
 				IsError: true,
 			}, nil
 		}
@@ -2078,14 +2078,14 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 		output, ok, errMsg := webshellHandler.ExecWithConnection(conn, testCmd)
 		if errMsg != "" {
 			return &mcp.ToolResult{
-				Content: []mcp.Content{{Type: "text", Text: fmt.Sprintf("连接测试失败！\n\n连接ID: %s\nURL: %s\n错误: %s", connID, conn.URL, errMsg)}},
+				Content: []mcp.Content{{Type: "text", Text: fmt.Sprintf("Connection test failed!\n\nconnection ID: %s\nURL: %s\nError: %s", connID, conn.URL, errMsg)}},
 				IsError: true,
 			}, nil
 		}
 
 		if !ok {
 			return &mcp.ToolResult{
-				Content: []mcp.Content{{Type: "text", Text: fmt.Sprintf("连接测试失败！HTTP 非 200\n\n连接ID: %s\nURL: %s\n输出: %s", connID, conn.URL, output)}},
+				Content: []mcp.Content{{Type: "text", Text: fmt.Sprintf("Connection test failed! HTTP not 200\n\nconnection ID: %s\nURL: %s\nOutput: %s", connID, conn.URL, output)}},
 				IsError: true,
 			}, nil
 		}
@@ -2093,14 +2093,14 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 		return &mcp.ToolResult{
 			Content: []mcp.Content{{
 				Type: "text",
-				Text: fmt.Sprintf("连接测试成功！\n\n连接ID: %s\nURL: %s\n类型: %s\n\n测试命令: %s\n输出结果:\n%s", connID, conn.URL, conn.Type, testCmd, output),
+				Text: fmt.Sprintf("Connection test successful!\n\nconnection ID: %s\nURL: %s\nType: %s\n\nTest command: %s\nOutput result:\n%s", connID, conn.URL, conn.Type, testCmd, output),
 			}},
 			IsError: false,
 		}, nil
 	}
 	mcpServer.RegisterTool(testTool, testHandler)
 
-	logger.Debug("WebShell 管理工具注册成功")
+	logger.Debug("WebShell management tool registered successfully")
 }
 
 // initializeKnowledge 初始化知识库组件（用于动态初始化）
@@ -2121,20 +2121,20 @@ func initializeKnowledge(
 		// 使用独立的知识库数据库
 		// 确保目录存在
 		if err := os.MkdirAll(filepath.Dir(knowledgeDBPath), 0755); err != nil {
-			return nil, fmt.Errorf("创建知识库数据库目录失败: %w", err)
+			return nil, fmt.Errorf("Failed to create knowledge base database directory: %w", err)
 		}
 
 		var err error
 		knowledgeDBConn, err = database.NewKnowledgeDB(knowledgeDBPath, logger)
 		if err != nil {
-			return nil, fmt.Errorf("初始化知识库数据库失败: %w", err)
+			return nil, fmt.Errorf("Failed to initialize knowledge base database: %w", err)
 		}
 		knowledgeDB = knowledgeDBConn.DB
-		logger.Info("使用独立的知识库数据库", zap.String("path", knowledgeDBPath))
+		logger.Info("Use of a stand-alone knowledge base database", zap.String("path", knowledgeDBPath))
 	} else {
 		// 向后兼容：使用会话数据库
 		knowledgeDB = db.DB
-		logger.Info("使用会话数据库存储知识库数据（建议配置knowledge_db_path以分离数据）")
+		logger.Info("Storage of knowledge base data using session database (recommended to configure knowledge_db_path to separate data)")
 	}
 
 	// 创建知识库管理器
@@ -2151,20 +2151,20 @@ func initializeKnowledge(
 
 	embedder, err := knowledge.NewEmbedder(context.Background(), &cfg.Knowledge, &cfg.OpenAI, logger)
 	if err != nil {
-		return nil, fmt.Errorf("初始化知识库嵌入器失败: %w", err)
+		return nil, fmt.Errorf("Initialization of the knowledge base embedr failed: %w", err)
 	}
 
 	// 创建检索器（Eino MultiQuery + 重排流水线）
 	retrievalConfig := knowledge.RetrievalConfigFromYAML(cfg.Knowledge.Retrieval)
 	knowledgeRetriever := knowledge.NewRetriever(knowledgeDB, embedder, retrievalConfig, logger)
 	if err := knowledge.WireRetrieverPipeline(context.Background(), knowledgeRetriever, &cfg.OpenAI); err != nil {
-		return nil, fmt.Errorf("初始化知识库检索流水线失败: %w", err)
+		return nil, fmt.Errorf("Initialization of knowledge base to retrieve stream lines failed: %w", err)
 	}
 
 	// 创建索引器（Eino Compose 链）
 	knowledgeIndexer, err := knowledge.NewIndexer(context.Background(), knowledgeDB, embedder, logger, &cfg.Knowledge)
 	if err != nil {
-		return nil, fmt.Errorf("初始化知识库索引器失败: %w", err)
+		return nil, fmt.Errorf("Initializing knowledge base indexer failed: %w", err)
 	}
 
 	// 注册知识检索工具到MCP服务器
@@ -2175,7 +2175,7 @@ func initializeKnowledge(
 	if app != nil && app.auditSvc != nil {
 		knowledgeHandler.SetAudit(app.auditSvc)
 	}
-	logger.Info("知识库模块初始化完成", zap.Bool("handler_created", knowledgeHandler != nil))
+	logger.Info("Initialization of knowledge base module completed", zap.Bool("handler_created", knowledgeHandler != nil))
 
 	// 设置知识库管理器到AgentHandler以便记录检索日志
 	agentHandler.SetKnowledgeManager(knowledgeManager)
@@ -2190,28 +2190,28 @@ func initializeKnowledge(
 		if knowledgeDBPath != "" {
 			app.knowledgeDB = knowledgeDBConn
 		}
-		logger.Info("App 中的知识库组件已更新")
+		logger.Info("The knowledge base component in App has been updated")
 	}
 
 	// 扫描知识库并建立索引（异步）
 	go func() {
 		itemsToIndex, err := knowledgeManager.ScanKnowledgeBase()
 		if err != nil {
-			logger.Warn("扫描知识库失败", zap.Error(err))
+			logger.Warn("Failed to scan the knowledge base", zap.Error(err))
 			return
 		}
 
 		// 检查是否已有索引
 		hasIndex, err := knowledgeIndexer.HasIndex()
 		if err != nil {
-			logger.Warn("检查索引状态失败", zap.Error(err))
+			logger.Warn("Checking index status failed", zap.Error(err))
 			return
 		}
 
 		if hasIndex {
 			// 如果已有索引，只索引新添加或更新的项
 			if len(itemsToIndex) > 0 {
-				logger.Info("检测到已有知识库索引，开始增量索引", zap.Int("count", len(itemsToIndex)))
+				logger.Info("Detect existing knowledge base index and start incremental indexing", zap.Int("count", len(itemsToIndex)))
 				ctx := context.Background()
 				consecutiveFailures := 0
 				var firstFailureItemID string
@@ -2226,12 +2226,12 @@ func initializeKnowledge(
 						if consecutiveFailures == 1 {
 							firstFailureItemID = itemID
 							firstFailureError = err
-							logger.Warn("索引知识项失败", zap.String("itemId", itemID), zap.Error(err))
+							logger.Warn("Index knowledge entry failed", zap.String("itemId", itemID), zap.Error(err))
 						}
 
 						// 如果连续失败2次，立即停止增量索引
 						if consecutiveFailures >= 2 {
-							logger.Error("连续索引失败次数过多，立即停止增量索引",
+							logger.Error("Too many consecutive index failures, stop the incremental index immediately",
 								zap.Int("consecutiveFailures", consecutiveFailures),
 								zap.Int("totalItems", len(itemsToIndex)),
 								zap.String("firstFailureItemId", firstFailureItemID),
@@ -2249,18 +2249,18 @@ func initializeKnowledge(
 						firstFailureError = nil
 					}
 				}
-				logger.Info("增量索引完成", zap.Int("totalItems", len(itemsToIndex)), zap.Int("failedCount", failedCount))
+				logger.Info("Incremental index completion", zap.Int("totalItems", len(itemsToIndex)), zap.Int("failedCount", failedCount))
 			} else {
-				logger.Info("检测到已有知识库索引，没有需要索引的新项或更新项")
+				logger.Info("Index to an existing knowledge base detected, no new or updated entries requiring index")
 			}
 			return
 		}
 
 		// 冷启动：仅为尚无向量的知识项构建索引（与 IndexMissing 语义一致）
-		logger.Info("未检测到知识库索引，开始自动构建索引")
+		logger.Info("The knowledge base index was not detected and the index is automatically built")
 		ctx := context.Background()
 		if err := knowledgeIndexer.IndexMissing(ctx); err != nil {
-			logger.Warn("自动构建知识库索引失败", zap.Error(err))
+			logger.Warn("Failed to automatically build an index to the knowledge base", zap.Error(err))
 		}
 	}()
 

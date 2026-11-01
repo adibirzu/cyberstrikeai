@@ -196,7 +196,7 @@ func (db *DB) maybeRecordModelTokenUsage(messageID, conversationID, processDetai
 		return
 	}
 	if err := db.UpsertModelTokenUsage(usage); err != nil && db.logger != nil {
-		db.logger.Warn("保存模型Token用量失败",
+		db.logger.Warn("Failed to save model Token usage",
 			zap.String("processDetailId", processDetailID),
 			zap.String("conversationId", conversationID),
 			zap.Error(err))
@@ -218,7 +218,7 @@ func (db *DB) UpsertModelTokenUsage(usage ModelTokenUsage) error {
 	}
 	var projectID sql.NullString
 	if err := db.QueryRow(`SELECT project_id FROM conversations WHERE id = ?`, usage.ConversationID).Scan(&projectID); err != nil && err != sql.ErrNoRows {
-		return fmt.Errorf("查询对话项目失败: %w", err)
+		return fmt.Errorf("Query dialogue item failed: %w", err)
 	}
 	projectValue := interface{}(nil)
 	if projectID.Valid && strings.TrimSpace(projectID.String) != "" {
@@ -254,7 +254,7 @@ ON CONFLICT(process_detail_id) DO UPDATE SET
 		createdAt, now,
 	)
 	if err != nil {
-		return fmt.Errorf("写入模型Token用量失败: %w", err)
+		return fmt.Errorf("Writing to model Token failed: %w", err)
 	}
 	return nil
 }
@@ -271,7 +271,7 @@ LEFT JOIN model_token_usage mtu ON mtu.process_detail_id = pd.id
 WHERE pd.event_type = ?
 	AND (mtu.id IS NULL OR mtu.created_at != pd.created_at)`, modelTokenUsageEventType)
 	if err != nil {
-		return fmt.Errorf("查询历史模型Token用量失败: %w", err)
+		return fmt.Errorf("Failed to query historical model Token: %w", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -279,7 +279,7 @@ WHERE pd.event_type = ?
 		var data sql.NullString
 		var createdAt string
 		if err := rows.Scan(&processDetailID, &messageID, &conversationID, &data, &createdAt); err != nil {
-			return fmt.Errorf("扫描历史模型Token用量失败: %w", err)
+			return fmt.Errorf("Scan history model Token failed: %w", err)
 		}
 		if !data.Valid {
 			continue
@@ -294,7 +294,7 @@ WHERE pd.event_type = ?
 		}
 	}
 	if err := rows.Err(); err != nil {
-		return fmt.Errorf("遍历历史模型Token用量失败: %w", err)
+		return fmt.Errorf("Token used through history model failed: %w", err)
 	}
 	return nil
 }
@@ -403,7 +403,7 @@ func (db *DB) queryModelTokenUsageSummary(query string, args ...interface{}) (Mo
 		&s.TotalTokens, &s.CachedTokens, &s.CacheWriteTokens, &s.ReasoningTokens,
 	)
 	if err != nil {
-		return s, fmt.Errorf("查询模型Token用量汇总失败: %w", err)
+		return s, fmt.Errorf("Query model Token aggregating failed: %w", err)
 	}
 	return s, nil
 }
@@ -411,7 +411,7 @@ func (db *DB) queryModelTokenUsageSummary(query string, args ...interface{}) (Mo
 func (db *DB) queryModelTokenUsageBreakdown(query string, args ...interface{}) ([]ModelTokenUsageBreakdown, error) {
 	rows, err := db.Query(query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("查询模型Token用量分组失败: %w", err)
+		return nil, fmt.Errorf("Query model Token grouping failed: %w", err)
 	}
 	defer rows.Close()
 	out := []ModelTokenUsageBreakdown{}
@@ -421,12 +421,12 @@ func (db *DB) queryModelTokenUsageBreakdown(query string, args ...interface{}) (
 			&row.Key, &row.Label, &row.Events, &row.ModelCalls, &row.PromptTokens,
 			&row.CompletionTokens, &row.TotalTokens, &row.CachedTokens, &row.CacheWriteTokens, &row.ReasoningTokens,
 		); err != nil {
-			return nil, fmt.Errorf("扫描模型Token用量分组失败: %w", err)
+			return nil, fmt.Errorf("Scan model Token grouping failed: %w", err)
 		}
 		out = append(out, row)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("遍历模型Token用量分组失败: %w", err)
+		return nil, fmt.Errorf("Failed to group through model Token: %w", err)
 	}
 	return out, nil
 }
@@ -450,7 +450,7 @@ JOIN conversations c ON c.id = mtu.conversation_id`+where+`
 ORDER BY mtu.created_at DESC, mtu.rowid DESC
 LIMIT ?`, args...)
 	if err != nil {
-		return nil, fmt.Errorf("查询模型Token用量明细失败: %w", err)
+		return nil, fmt.Errorf("Querying model Token size breakdown failed: %w", err)
 	}
 	defer rows.Close()
 	out := []ModelTokenUsage{}
@@ -463,14 +463,14 @@ LIMIT ?`, args...)
 			&u.PromptTokens, &u.CompletionTokens, &u.TotalTokens, &u.CachedTokens,
 			&u.CacheWriteTokens, &u.ReasoningTokens, &createdAt, &updatedAt,
 		); err != nil {
-			return nil, fmt.Errorf("扫描模型Token用量明细失败: %w", err)
+			return nil, fmt.Errorf("Scanning model Token use details failed: %w", err)
 		}
 		u.CreatedAt = parseModelTokenUsageTime(createdAt)
 		u.UpdatedAt = parseModelTokenUsageTime(updatedAt)
 		out = append(out, u)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("遍历模型Token用量明细失败: %w", err)
+		return nil, fmt.Errorf("Walking through model Token 's size breakdown failed: %w", err)
 	}
 	return out, nil
 }

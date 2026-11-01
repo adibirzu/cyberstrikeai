@@ -82,7 +82,7 @@ test('detail requests stay project scoped and discard late results after a perio
 
 test('all supported languages expose usage labels and interpolation placeholders', () => {
     for (const locale of ['zh-CN', 'en-US', 'ru-RU']) {
-        const data = JSON.parse(fs.readFileSync(`web/static/i18n/${locale}.json`, 'utf8'));
+        const data = JSON.parse(fs.readFileSync((locale === 'zh-CN' ? 'maintenance/vendor-locales/zh-CN.json' : `web/static/i18n/${locale}.json`), 'utf8'));
         for (const key of ['usageView', 'usageScope', 'usageCacheRead', 'usageCacheWrite', 'usageTrend', 'usageCacheHitRate']) assert.ok(data.dashboard[key]);
         assert.ok(data.settings.nav.tokenUsage);
         for (const key of ['subtitle', 'scopeNote', 'trendMetric', 'cacheComposition', 'cacheHit', 'uncachedInput', 'cacheNote', 'scopeProject', 'scopeAccessible', 'noDailyData']) assert.ok(data.tokenUsageUI[key]);

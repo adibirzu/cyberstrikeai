@@ -35,7 +35,7 @@ func readRollbackPending(root string) (*rollbackPendingState, error) {
 	var fields map[string]json.RawMessage
 	_ = json.Unmarshal(data, &fields)
 	if _, ok := fields["restore_binary"]; !ok {
-		return nil, fmt.Errorf("回滚恢复记录缺少二进制恢复决策")
+		return nil, fmt.Errorf("Rollback recovery records lack binary recovery decisions")
 	}
 	if err := validateRollbackEvidence(root, pending); err != nil {
 		return nil, err
@@ -65,18 +65,18 @@ func finishRollback(ctx context.Context, opts Options, pending rollbackPendingSt
 	bin := filepath.Join(root, opts.binaryName())
 	if !pending.RestoreBinary && pending.LiveSHA256 == "" {
 		if _, err := os.Lstat(bin); !os.IsNotExist(err) {
-			return nil, &Error{Reason: "binary_changed", Message: "恢复记录要求二进制不存在，但现场不匹配；已保留记录"}
+			return nil, &Error{Reason: "binary_changed", Message: "Recovery expects no binary, but the current installation differs; recovery records were preserved"}
 		}
 	}
 	if pending.RestoreBinary {
 		current, currentErr := fileSHA256(bin)
 		if currentErr != nil || current != pending.PreviousSHA256 {
 			if currentErr == nil && current != pending.LiveSHA256 {
-				return nil, &Error{Reason: "binary_changed", Message: "回滚中断后现有二进制发生变化，已保留现场"}
+				return nil, &Error{Reason: "binary_changed", Message: "The current binary changed after rollback was interrupted; it was preserved"}
 			}
 			previous, previousErr := fileSHA256(bin + ".prev")
 			if previousErr != nil || previous != pending.PreviousSHA256 {
-				return nil, &Error{Reason: "binary_changed", Message: "回滚备份与恢复记录不一致，已保留现场"}
+				return nil, &Error{Reason: "binary_changed", Message: "Rollback backup does not match recovery records; existing files were preserved"}
 			}
 			if err := restorePrevBinary(bin); err != nil {
 				return nil, &Error{Reason: "swap_failed", Message: err.Error()}
@@ -85,7 +85,7 @@ func finishRollback(ctx context.Context, opts Options, pending rollbackPendingSt
 	} else if pending.LiveSHA256 != "" {
 		current, err := fileSHA256(bin)
 		if err != nil || current != pending.LiveSHA256 {
-			return nil, &Error{Reason: "binary_changed", Message: "回滚中断后现有二进制发生变化，已保留现场"}
+			return nil, &Error{Reason: "binary_changed", Message: "The current binary changed after rollback was interrupted; it was preserved"}
 		}
 	}
 	content := buildPendingState{BackupDir: pending.BackupDir, KeptContent: pending.Kept, DeletedContent: pending.Deleted}
@@ -96,7 +96,7 @@ func finishRollback(ctx context.Context, opts Options, pending rollbackPendingSt
 		return nil, err
 	}
 	if err := restoreVersionAfterRollback(root, pending.State); err != nil {
-		return nil, &Error{Reason: "version_restore_failed", Message: "源码和二进制已回滚，但版本恢复失败；修复配置写入后重试回滚：" + err.Error()}
+		return nil, &Error{Reason: "version_restore_failed", Message: "Source and binary were rolled back, but version restoration failed. Repair configuration and retry rollback: " + err.Error()}
 	}
 	if err := os.Remove(statePath(root)); err != nil && !os.IsNotExist(err) {
 		return nil, err

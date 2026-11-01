@@ -23,20 +23,20 @@ type WechatConfigSaver interface {
 }
 
 type wechatLoginSession struct {
-	QRCode           string
-	QRCodeImgURL     string
-	PendingVerify    string
-	CurrentBaseURL   string
-	StartedAt        time.Time
+	QRCode         string
+	QRCodeImgURL   string
+	PendingVerify  string
+	CurrentBaseURL string
+	StartedAt      time.Time
 }
 
 // WechatRobotHandler 微信 iLink 机器人（扫码绑定 + 配置）
 type WechatRobotHandler struct {
-	config       *config.Config
-	configSaver  WechatConfigSaver
-	logger       *zap.Logger
-	mu           sync.Mutex
-	logins       map[string]*wechatLoginSession
+	config      *config.Config
+	configSaver WechatConfigSaver
+	logger      *zap.Logger
+	mu          sync.Mutex
+	logins      map[string]*wechatLoginSession
 }
 
 // NewWechatRobotHandler 创建微信机器人处理器
@@ -103,12 +103,12 @@ func (h *WechatRobotHandler) HandleWechatQRCode(c *gin.Context) {
 
 	qr, err := client.GetBotQRCode(ctx, botType, localTokens)
 	if err != nil {
-		h.logger.Warn("获取微信二维码失败", zap.Error(err))
-		c.JSON(http.StatusBadGateway, gin.H{"error": "获取二维码失败: " + err.Error()})
+		h.logger.Warn("Failed to access micro-trust 2D code", zap.Error(err))
+		c.JSON(http.StatusBadGateway, gin.H{"error": "Failed to get QR code: " + err.Error()})
 		return
 	}
 	if qr.QRCode == "" || qr.QRCodeImgContent == "" {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "微信服务器未返回有效二维码"})
+		c.JSON(http.StatusBadGateway, gin.H{"error": "The micro-trust server did not return the valid 2D code"})
 		return
 	}
 
@@ -126,10 +126,10 @@ func (h *WechatRobotHandler) HandleWechatQRCode(c *gin.Context) {
 		"session_key":     sessionKey,
 		"qrcode":          qr.QRCode,
 		"qrcode_open_url": qr.QRCodeImgContent,
-		"message":         "请使用微信扫描二维码并确认绑定",
+		"message":         "Please use a micro-mail to scan the 2D code and confirm binding.",
 	}
 	if dataURL, err := ilink.QRCodeDataURL(qr.QRCodeImgContent, 256); err != nil {
-		h.logger.Warn("生成二维码图片失败", zap.Error(err))
+		h.logger.Warn("Failed to generate 2D images", zap.Error(err))
 	} else {
 		resp["qrcode_image_data_url"] = dataURL
 	}
@@ -142,7 +142,7 @@ func (h *WechatRobotHandler) HandleWechatQRCodeStatus(c *gin.Context) {
 	sessionKey := c.Query("session_key")
 	verifyCode := c.Query("verify_code")
 	if sessionKey == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少 session_key"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing session_key"})
 		return
 	}
 
@@ -150,14 +150,14 @@ func (h *WechatRobotHandler) HandleWechatQRCodeStatus(c *gin.Context) {
 	sess, ok := h.logins[sessionKey]
 	h.mu.Unlock()
 	if !ok {
-		c.JSON(http.StatusNotFound, gin.H{"error": "登录会话不存在或已过期，请重新生成二维码"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Login session does not exist or is expired, please recreate 2D"})
 		return
 	}
 	if time.Since(sess.StartedAt) > wechatLoginTTL {
 		h.mu.Lock()
 		delete(h.logins, sessionKey)
 		h.mu.Unlock()
-		c.JSON(http.StatusGone, gin.H{"error": "二维码已过期，请重新生成"})
+		c.JSON(http.StatusGone, gin.H{"error": "2D code expired, please recreate"})
 		return
 	}
 
@@ -176,7 +176,7 @@ func (h *WechatRobotHandler) HandleWechatQRCodeStatus(c *gin.Context) {
 
 	st, err := client.GetQRCodeStatus(ctx, sess.QRCode, vc)
 	if err != nil {
-		h.logger.Warn("轮询微信二维码状态失败", zap.Error(err))
+		h.logger.Warn("Failed to rotate micro-mail 2D", zap.Error(err))
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}
@@ -188,7 +188,7 @@ func (h *WechatRobotHandler) HandleWechatQRCodeStatus(c *gin.Context) {
 	case "need_verifycode":
 		c.JSON(http.StatusOK, gin.H{
 			"status":  st.Status,
-			"message": "请在手机微信查看配对数字，并在下方输入",
+			"message": "Please check the numbers on your cell phone and enter them below.",
 		})
 		return
 	case "scaned_but_redirect":
@@ -208,12 +208,12 @@ func (h *WechatRobotHandler) HandleWechatQRCodeStatus(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":            st.Status,
 			"already_connected": true,
-			"message":           "该微信已绑定过，无需重复绑定",
+			"message":           "The letter has been bound. There's no need to repeat it.",
 		})
 		return
 	case "confirmed":
 		if st.BotToken == "" || st.ILinkBotID == "" {
-			c.JSON(http.StatusBadGateway, gin.H{"error": "绑定确认成功但缺少 bot_token"})
+			c.JSON(http.StatusBadGateway, gin.H{"error": "binding confirmed success but missing bot_token"})
 			return
 		}
 		saveBase := st.BaseURL
@@ -234,8 +234,8 @@ func (h *WechatRobotHandler) HandleWechatQRCodeStatus(c *gin.Context) {
 		}
 		if h.configSaver != nil {
 			if err := h.configSaver.ApplyWechatRobotBinding(wc); err != nil {
-				h.logger.Warn("保存微信机器人配置失败", zap.Error(err))
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "保存配置失败: " + err.Error()})
+				h.logger.Warn("Failed to save micro-trust robot configuration", zap.Error(err))
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Save configuration failed: " + err.Error()})
 				return
 			}
 		} else {
@@ -246,7 +246,7 @@ func (h *WechatRobotHandler) HandleWechatQRCodeStatus(c *gin.Context) {
 		h.mu.Unlock()
 		c.JSON(http.StatusOK, gin.H{
 			"status":        "confirmed",
-			"message":       "绑定成功，微信机器人已启用",
+			"message":       "We've got a tie. We've got a micro-intelligence robot.",
 			"ilink_bot_id":  st.ILinkBotID,
 			"ilink_user_id": st.ILinkUserID,
 		})
@@ -263,7 +263,7 @@ func (h *WechatRobotHandler) HandleWechatVerifyCode(c *gin.Context) {
 		VerifyCode string `json:"verify_code"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil || req.SessionKey == "" || req.VerifyCode == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "需要 session_key 与 verify_code"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "requires session_key and verify_code"})
 		return
 	}
 	h.mu.Lock()
@@ -273,10 +273,10 @@ func (h *WechatRobotHandler) HandleWechatVerifyCode(c *gin.Context) {
 	}
 	h.mu.Unlock()
 	if !ok {
-		c.JSON(http.StatusNotFound, gin.H{"error": "登录会话不存在或已过期"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Login session does not exist or expired"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "已提交配对码，请继续等待绑定"})
+	c.JSON(http.StatusOK, gin.H{"message": "We've submitted a pair. Please continue to wait for the binding."})
 }
 
 // HandleWechatStatus GET /api/robot/wechat/status — 当前绑定状态（供前端展示）

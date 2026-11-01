@@ -40,10 +40,10 @@ func RunEinoSingleChatModelAgent(
 	systemPromptExtra string,
 ) (*RunResult, error) {
 	if appCfg == nil || ag == nil {
-		return nil, fmt.Errorf("eino single: 配置或 Agent 为空")
+		return nil, fmt.Errorf("eino single: Configure or Agent Empty")
 	}
 	if ma == nil {
-		return nil, fmt.Errorf("eino single: multi_agent 配置为空")
+		return nil, fmt.Errorf("eino single: multi_agent configuration as empty")
 	}
 	runtimeUserMessage := prepareLatestUserMessageForModel(userMessage, appCfg, &ma.EinoMiddleware, conversationID, logger)
 
@@ -86,14 +86,14 @@ func RunEinoSingleChatModelAgent(
 
 	mainToolsForCfg, mainOrchestratorPre, singleToolSearchActive, err := prependEinoAgenticMiddlewares(ctx, &ma.EinoMiddleware, einoMWMain, mainTools, einoLoc, skillsRoot, conversationID, projectID, logger)
 	if err != nil {
-		return nil, fmt.Errorf("eino single eino 中间件: %w", err)
+		return nil, fmt.Errorf("eino single eino Middle: %w", err)
 	}
 
 	baseHTTPClient := newEinoBaseHTTPClient()
 	agenticModelFactory := newEinoAgenticChatModelFactory(baseHTTPClient, reasoningClient, logger)
 	mainModel, err := agenticModelFactory(ctx, appCfg.OpenAI, einoModelModeNormal)
 	if err != nil {
-		return nil, fmt.Errorf("eino single agentic 模型: %w", err)
+		return nil, fmt.Errorf("eino single agentic Model: %w", err)
 	}
 	modelRetryCfg := newEinoAgenticModelRetryConfig(&ma.EinoMiddleware, logger, "eino_single")
 	modelFailoverCfg, err := newEinoAgenticModelFailoverConfig(ctx, appCfg, &ma.EinoMiddleware, einoModelModeNormal, agenticModelFactory, logger, "eino_single", progress, "eino_single", conversationID)
@@ -122,7 +122,7 @@ func RunEinoSingleChatModelAgent(
 		if einoFSTools && einoLoc != nil {
 			fsMw, fsErr := subAgentAgenticFilesystemMiddleware(ctx, einoLoc, toolInvokeNotify, einoSingleAgentName, conversationID, projectID, ma.EinoMiddleware.ReductionRootDir, toolMaxBytesFromMW(&ma.EinoMiddleware), mcpExecBinder, einoExecBegin, einoExecAppendPartial, einoExecRegisterCancel, einoExecUnregisterCancel, einoExecFinish, agentToolTimeoutMinutes(appCfg), agentToolWaitTimeoutSeconds(appCfg), agentShellNoOutputTimeoutSeconds(appCfg), nil)
 			if fsErr != nil {
-				return nil, fmt.Errorf("eino single filesystem 中间件: %w", fsErr)
+				return nil, fmt.Errorf("eino single filesystem Middle: %w", fsErr)
 			}
 			handlers = append(handlers, fsMw)
 		}
@@ -231,6 +231,6 @@ func RunEinoSingleChatModelAgent(
 		ModelName:               appCfg.OpenAI.Model,
 		MiddlewareConfig:        &ma.EinoMiddleware,
 		EmptyResponseMessage: "(Eino ADK single-agent session completed but no assistant text was captured. Check process details or logs.) " +
-			"（Eino ADK 单代理会话已完成，但未捕获到助手文本输出。请查看过程详情或日志。）",
+			"(Eino ADK single proxy session completed, but the assistant text output was not captured. See process details or logs.",
 	}, baseMsgs)
 }

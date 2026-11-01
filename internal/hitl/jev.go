@@ -136,7 +136,7 @@ func truncateRunes(s string, max int) string {
 // Uncertain cases follow the product default: approve, unless a custom policy Choice rejects with high confidence.
 func DecideJev(result *typesafe.Result) (decision, comment string) {
 	if result == nil {
-		return "reject", "audit agent: TypeSafe 无有效响应，保守拒绝"
+		return "reject", "audit agent: TypeSafe No effective response, Conservative rejection"
 	}
 	availability := result.Noul(jevQAvailability)
 	dataLoss := result.Noul(jevQDataLoss)
@@ -153,11 +153,11 @@ func DecideJev(result *typesafe.Result) (decision, comment string) {
 		noul  float64
 	}
 	hits := []hit{
-		{jevQAvailability, "破坏业务可用性", availability},
-		{jevQDataLoss, "不可逆数据破坏", dataLoss},
-		{jevQCredentials, "账号权限篡改", credentials},
-		{jevQConfig, "改系统配置", configTamper},
-		{jevQOperatorPolicy, "组织审批策略", policyNoul},
+		{jevQAvailability, "Disruption of operational usability", availability},
+		{jevQDataLoss, "Unreversible data damage", dataLoss},
+		{jevQCredentials, "Account Permission Modified", credentials},
+		{jevQConfig, "Change System Configuration", configTamper},
+		{jevQOperatorPolicy, "Organizational approval strategy", policyNoul},
 	}
 	var fired []string
 	maxReject := 0.0
@@ -173,21 +173,21 @@ func DecideJev(result *typesafe.Result) (decision, comment string) {
 	}
 
 	decision = "approve"
-	reason := "未命中破坏性规则，默认放行"
+	reason := "No destructive rule matched; approve by default"
 	if maxReject >= jevRejectThreshold {
 		decision = "reject"
-		reason = "命中拒绝规则：" + strings.Join(fired, "；")
+		reason = "Matched rejection rule: " + strings.Join(fired, "；")
 	} else if strings.EqualFold(choice, "reject") && choiceConf >= 0.85 && (hasOperatorPolicy || (maxReject < 0.35 && pentest < 0.5)) {
 		decision = "reject"
 		if hasOperatorPolicy {
-			reason = fmt.Sprintf("Jev 按组织策略拒绝（choice=%.2f，策略分=%.2f）", choiceConf, policyNoul)
+			reason = fmt.Sprintf("Jev rejected under Organizational approval strategy (choice=%.2f, policy score=%.2f)", choiceConf, policyNoul)
 		} else {
-			reason = fmt.Sprintf("Jev 高置信拒绝（choice=%.2f，最高破坏分=%.2f）", choiceConf, maxReject)
+			reason = fmt.Sprintf("Jev high-confidence rejection (choice=%.2f, maximum destructive score=%.2f)", choiceConf, maxReject)
 		}
 	}
 
 	if decision == "approve" && topLabel != "" {
-		reason = fmt.Sprintf("%s；最高破坏分=%s %.2f；渗透payload=%.2f", reason, topLabel, maxReject, pentest)
+		reason = fmt.Sprintf("%s; Maximum destructive score=%s %.2f; Authorized pentest score=%.2f", reason, topLabel, maxReject, pentest)
 	}
 
 	comment = fmt.Sprintf("audit agent: %s；choice=%s(%.2f)", reason, choice, choiceConf)

@@ -1,45 +1,34 @@
 name: "ffuf"
 command: "ffuf"
 enabled: true
-short_description: "快速Web模糊测试工具，用于目录、参数和内容发现"
+short_description: "Fuzz web content, paths and parameters"
 description: |
-  FFuf是一个快速的Web模糊测试工具，用于目录发现、参数模糊测试和内容发现。
+  Fuzz web content, paths and parameters.
 
-  **主要功能：**
-  - 快速目录和文件发现
-  - 参数模糊测试
-  - 虚拟主机发现
-  - 自定义过滤器和匹配器
-  - 多线程支持
-
-  **使用场景：**
-  - Web应用安全测试
-  - 目录枚举
-  - 参数发现
-  - 内容发现
+  Use the parameters below to select the target and native options. Additional native arguments are supported where exposed by this recipe.
 parameters:
   - name: "url"
     type: "string"
-    description: "目标URL（使用FUZZ作为占位符）"
+    description: "Target URL. Native option: -u."
     required: true
     flag: "-u"
     format: "flag"
   - name: "wordlist"
     type: "string"
-    description: "字典文件路径"
+    description: "Path to the wordlist file. Native option: -w. Default: /usr/share/wordlists/dirb/common.txt."
     required: false
     default: "/usr/share/wordlists/dirb/common.txt"
     flag: "-w"
     format: "flag"
   - name: "match_codes"
     type: "string"
-    description: "匹配的HTTP状态码（逗号分隔）"
+    description: "Comma-separated HTTP status codes to match. Native option: -mc. Default: 200,204,301,302,307,401,403."
     required: false
     default: "200,204,301,302,307,401,403"
     flag: "-mc"
     format: "flag"
   - name: "additional_args"
     type: "string"
-    description: "额外的FFuf参数"
+    description: "Additional native command-line arguments, appended according to this recipe."
     required: false
     format: "positional"

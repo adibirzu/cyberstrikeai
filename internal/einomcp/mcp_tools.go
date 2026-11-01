@@ -45,14 +45,14 @@ func ToolsFromDefinitions(
 			return nil, fmt.Errorf("tool %q: %w", d.Function.Name, err)
 		}
 		out = append(out, &mcpBridgeTool{
-			info:           info,
-			name:           d.Function.Name,
-			agent:          ag,
-			holder:         holder,
-			record:         rec,
-			chunk:          toolOutputChunk,
-			invokeNotify:   invokeNotify,
-			einoAgentName:  strings.TrimSpace(einoAgentName),
+			info:          info,
+			name:          d.Function.Name,
+			agent:         ag,
+			holder:        holder,
+			record:        rec,
+			chunk:         toolOutputChunk,
+			invokeNotify:  invokeNotify,
+			einoAgentName: strings.TrimSpace(einoAgentName),
 		})
 	}
 	return out, nil
@@ -141,7 +141,7 @@ func runMCPToolInvocation(
 			return ToolErrorPrefix + fmt.Sprintf(
 				"Invalid tool arguments JSON: %s\n\nPlease ensure the arguments are a valid JSON object "+
 					"(double-quoted keys, matched braces, no trailing commas) and retry.\n\n"+
-					"（工具参数 JSON 解析失败：%s。请确保 arguments 是合法的 JSON 对象并重试。）",
+					" (Tool Parameters JSON Parsing failed: %s.Make sure. arguments It's legal. JSON Object and Try Again.) ",
 				err.Error(), err.Error()), nil
 		}
 	}
@@ -210,5 +210,5 @@ func unknownToolReminderText(requested string) string {
 
 Please retry using only names that appear in the tool definitions for this turn (exact match, case-sensitive). Do not invent or rename tools; adjust your plan and continue.
 
-（工具 %q 未注册：请仅使用本回合上下文中给出的工具名称，须完全一致；请勿自行改写或猜测名称，并继续后续步骤。）`, requested, requested)
+(Tool %q is not registered: use only the name of the tool given in the context of this round, which must be fully consistent; do not rewrite or speculate on the name and continue with the next steps.`, requested, requested)
 }

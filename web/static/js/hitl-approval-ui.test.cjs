@@ -10,7 +10,7 @@ const chat = fs.readFileSync('web/static/js/chat.js', 'utf8');
 const styles = fs.readFileSync('web/static/css/style.css', 'utf8');
 const template = fs.readFileSync('web/templates/index.html', 'utf8');
 const handler = fs.readFileSync('internal/handler/hitl.go', 'utf8');
-const zh = JSON.parse(fs.readFileSync('web/static/i18n/zh-CN.json', 'utf8'));
+const zh = JSON.parse(fs.readFileSync('maintenance/vendor-locales/zh-CN.json', 'utf8'));
 const en = JSON.parse(fs.readFileSync('web/static/i18n/en-US.json', 'utf8'));
 
 test('输入区提供独立审批入口并暴露可配置等待时限', () => {
@@ -70,7 +70,7 @@ test('输入框可按会话通道获取模型并双向同步会话推理且审�
     assert.match(chat, /function renderChatReasoningEffortOptions\(\)/);
     assert.match(chat, /function renderChatReasoningModeOptions\(\)/);
     assert.match(chat, /case 'low': return 'low'[\s\S]{0,300}case 'max': return 'max'/);
-    assert.match(chat, /chatTranslate\('chat\.reasoningEffortUnset', '不指定'\)/);
+    assert.match(chat, /chatTranslate\('chat\.reasoningEffortUnset', 'Unspecified'\)/);
     assert.match(chat, /\['default', 'off', 'on', 'auto'\]/);
     assert.match(chat, /\['', 'low', 'medium', 'high', 'xhigh', 'max'\]/);
     assert.match(chat, /function selectChatReasoningMode\(mode\)[\s\S]{0,700}modeControl\.value = chosen[\s\S]{0,200}finishChatReasoningPickerUpdate\(\)/);
@@ -293,8 +293,8 @@ test('多对话并发时释放隐藏主流且旧请求不能覆盖新对话状�
     assert.match(chat, /let loadConversationAbortController = null/);
     assert.match(chat, /cancelPendingConversationLoad\(\);[\s\S]{0,900}const conversationLoadController = new AbortController\(\)/);
     assert.match(chat, /signal: conversationLoadController\.signal/);
-    assert.match(template, /monitor\.js\?v=20261011-token-usage/);
-    assert.match(template, /chat-scroll\.js\?v=20260815-1/);
+    assert.match(template, /monitor\.js\?v=20261101-pentforge-english/);
+    assert.match(template, /chat-scroll\.js\?v=20261101-pentforge-english/);
     assert.match(template, /chat\.js\?v=[A-Za-z0-9._-]+/);
     assert.match(template, /style\.css\?v=[A-Za-z0-9._-]+/);
 });
@@ -353,7 +353,7 @@ test('审批状态主动轮询并在服务不可用时立即关闭旧审批', ()
     assert.match(monitor, /renderActiveTasks\(\[\]\);[\s\S]{0,260}hitlPendingInterruptTracker\.update\(\[\]\)/);
     assert.match(projects, /function syncProjectConversationApprovalStatuses\(items\)/);
     assert.match(projects, /window\.syncProjectConversationApprovalStatuses/);
-    assert.match(template, /projects\.js\?v=20260819-1/);
+    assert.match(template, /projects\.js\?v=20261101-pentforge-english/);
 });
 
 test('旧会话首次升级到五分钟默认审批时限，仍允许用户之后主动选择不限时', () => {

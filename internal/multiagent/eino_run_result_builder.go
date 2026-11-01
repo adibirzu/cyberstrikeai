@@ -74,7 +74,7 @@ func (b *einoRunResultBuilder) build(partial bool) *RunResult {
 }
 
 func einoPartialRunLastOutputHint() string {
-	return "[执行未正常结束（用户停止、超时或异常）。续跑时请基于上文已产生的工具与结果继续，勿重复已完成步骤。]\n" +
+	return "[The execution is not normally completed (user stops, time out or unusual). Continue on the basis of the tools and results produced above and do not repeat completed steps.]\n" +
 		"[Run ended abnormally; continue from the trace above without repeating completed steps.]"
 }
 
@@ -120,7 +120,7 @@ func buildEinoRunResultFromAccumulated(
 	cleaned = dedupeParagraphsByLineFingerprint(cleaned, 100)
 	const maxResponseRunes = 100000
 	if rs := []rune(cleaned); len(rs) > maxResponseRunes {
-		cleaned = string(rs[:maxResponseRunes]) + "\n\n... (response truncated / 响应已截断)"
+		cleaned = string(rs[:maxResponseRunes]) + "\n\n... (response truncated / Response stopped)"
 	}
 	lastOut := cleaned
 	resp := cleaned
@@ -154,7 +154,7 @@ func markModelFacingTraceForPersistence(msgs []adk.Message) []adk.Message {
 }
 
 // einoExtractExitDeliverableFromMsgs 从轨迹中提取当前轮次的 exit 正式交付物
-//（工具输出或 assistant 调用 exit 时的 arguments.final_result）。
+// （工具输出或 assistant 调用 exit 时的 arguments.final_result）。
 // 若更靠近末尾出现了非 exit 的工具结果，则认为 exit 不是终态交付。
 func einoExtractExitDeliverableFromMsgs(msgs []adk.Message) string {
 	for i := len(msgs) - 1; i >= 0; i-- {

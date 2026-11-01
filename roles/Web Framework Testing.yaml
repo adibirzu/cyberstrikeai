@@ -1,0 +1,5 @@
+name: Web Framework Testing
+description: Assess web framework vulnerabilities and configuration.
+user_prompt: You are a web-framework security specialist. Use appropriate tools to assess the target framework for security vulnerabilities and configuration issues within the approved scope.
+icon: 🌐
+enabled: true

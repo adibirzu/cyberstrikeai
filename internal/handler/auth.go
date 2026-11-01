@@ -75,7 +75,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 				Category: "auth",
 				Action:   "login",
 				Result:   "failure",
-				Message:  "登录失败：密码错误",
+				Message:  "Login failed: incorrect password",
 				Actor:    strings.TrimSpace(req.Username),
 			})
 		}
@@ -90,7 +90,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			Action:      "login",
 			Result:      "success",
 			SessionHint: audit.HintFromToken(token),
-			Message:     "登录成功",
+			Message:     "Login successful",
 			Actor:       session.Username,
 			Detail: map[string]interface{}{
 				"expires_at": expiresAt.UTC().Format(time.RFC3339),
@@ -173,7 +173,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 			Category: "auth",
 			Action:   "logout",
 			Result:   "success",
-			Message:  "退出登录",
+			Message:  "Logged out",
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Signed out"})
@@ -216,7 +216,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 				Category: "auth",
 				Action:   "change_password",
 				Result:   "failure",
-				Message:  "修改密码失败：当前密码不正确",
+				Message:  "Password change failed: current password incorrect",
 			})
 		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Current password is incorrect"})
@@ -228,14 +228,14 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	}
 	if err := h.manager.UpdateUserPassword(session.UserID, newPassword); err != nil {
 		if h.logger != nil {
-			h.logger.Error("更新用户密码失败", zap.Error(err))
+			h.logger.Error("Failed to update user password", zap.Error(err))
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update the password"})
 		return
 	}
 
 	if h.logger != nil {
-		h.logger.Info("登录密码已更新，所有会话已失效")
+		h.logger.Info("Login password updated, all sessions invalid")
 	}
 
 	if h.audit != nil {
@@ -243,7 +243,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 			Category: "auth",
 			Action:   "change_password",
 			Result:   "success",
-			Message:  "登录密码已修改",
+			Message:  "Login password changed",
 		})
 	}
 

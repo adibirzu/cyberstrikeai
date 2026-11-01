@@ -1,0 +1,8 @@
+{
+  "vendor_repository": "https://github.com/AIPentest/CyberStrikeAI.git",
+  "reviewed_vendor_base": "6ad8d47c745935e96e85962704cb12a89dacced0",
+  "fork_repository": "https://github.com/adibirzu/cyberstrikeai.git",
+  "fork_base": "23d09f178051230cbbb50ef6d25c47c606612380",
+  "sso_release": "764ea9dfaf09f74dbb083f9bced94fb32b915014",
+  "policy": "Merge reviewed upstream history into an isolated candidate branch; never reset fork main or automatically promote vendor commits."
+}

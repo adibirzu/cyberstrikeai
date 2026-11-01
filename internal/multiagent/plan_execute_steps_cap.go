@@ -52,7 +52,7 @@ func capPlanExecuteExecutedStepsWithConfig(steps []planexecute.ExecutedStep, mwC
 	if len(steps) > keepLastSteps {
 		start = len(steps) - keepLastSteps
 		var b strings.Builder
-		b.WriteString(fmt.Sprintf("（上文已完成 %d 步；此处仅保留步骤标题以节省上下文，完整输出已省略。后续 %d 步仍保留正文。）\n",
+		b.WriteString(fmt.Sprintf("(The %d step has been completed above; only the step title has been retained here to save context and the complete output has been omitted. The subsequent %d step is still in the text.\n",
 			start, keepLastSteps))
 		for i := 0; i < start; i++ {
 			b.WriteString(fmt.Sprintf("- %s\n", steps[i].Step))

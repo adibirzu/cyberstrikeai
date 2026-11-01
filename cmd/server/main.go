@@ -136,16 +136,16 @@ func main() {
 	defer log.Sync()
 
 	if err := configureProcessIsolation(cfg); err != nil {
-		log.Fatal("进程隔离初始化失败", "error", err)
+		log.Fatal("Process separation initialization failed", "error", err)
 	}
 
 	probeCtx, probeCancel := context.WithTimeout(context.Background(), 15*time.Second)
 	backend, probeErr := processguard.Check(probeCtx)
 	probeCancel()
 	if probeErr != nil {
-		log.Fatal("进程隔离启动检查失败", "error", probeErr)
+		log.Fatal("Process quarantine startup check failed", "error", probeErr)
 	}
-	log.Info("任务进程隔离已就绪", zap.String("backend", backend))
+	log.Info("The task process is in isolation.", zap.String("backend", backend))
 
 	// 创建可取消的根 context，用于优雅关闭
 	ctx, cancel := context.WithCancel(context.Background())
@@ -158,13 +158,13 @@ func main() {
 	// 创建应用
 	application, err := app.New(cfg, log, cp)
 	if err != nil {
-		log.Fatal("应用初始化失败", "error", err)
+		log.Fatal("Application of initialization failed", "error", err)
 	}
 
 	// 在后台监听信号
 	go func() {
 		sig := <-sigCh
-		log.Info("收到系统信号，开始优雅关闭: " + sig.String())
+		log.Info("I'm getting a signal from the system. " + sig.String())
 		application.Shutdown()
 		cancel()
 	}()
@@ -173,9 +173,9 @@ func main() {
 	if err := application.RunWithContext(ctx); err != nil {
 		// context 取消导致的关闭不视为错误
 		if ctx.Err() != nil {
-			log.Info("服务器已优雅关闭")
+			log.Info("The server has been gracefully closed.")
 		} else {
-			log.Fatal("服务器启动失败", "error", err)
+			log.Fatal("Server startup failed", "error", err)
 		}
 	}
 }

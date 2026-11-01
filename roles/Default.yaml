@@ -1,0 +1,5 @@
+name: Default
+description: Use the default agent and MCP configuration.
+user_prompt: ''
+icon: 🔵
+enabled: true

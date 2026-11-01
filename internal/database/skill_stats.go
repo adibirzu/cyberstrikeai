@@ -24,7 +24,7 @@ func (db *DB) SaveSkillStats(skillName string, stats *SkillStats) error {
 	}
 
 	query := `
-		INSERT OR REPLACE INTO skill_stats 
+		INSERT OR REPLACE INTO skill_stats
 		(skill_name, total_calls, success_calls, failed_calls, last_call_time, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?)
 	`
@@ -39,7 +39,7 @@ func (db *DB) SaveSkillStats(skillName string, stats *SkillStats) error {
 	)
 
 	if err != nil {
-		db.logger.Error("保存Skills统计信息失败", zap.Error(err), zap.String("skillName", skillName))
+		db.logger.Error("Failed to save Skills statistical information", zap.Error(err), zap.String("skillName", skillName))
 		return err
 	}
 
@@ -72,7 +72,7 @@ func (db *DB) LoadSkillStats() (map[string]*SkillStats, error) {
 			&lastCallTime,
 		)
 		if err != nil {
-			db.logger.Warn("加载Skills统计信息失败", zap.Error(err))
+			db.logger.Warn("Failed to load Skills statistical information", zap.Error(err))
 			continue
 		}
 
@@ -110,7 +110,7 @@ func (db *DB) UpdateSkillStats(skillName string, totalCalls, successCalls, faile
 	)
 
 	if err != nil {
-		db.logger.Error("更新Skills统计信息失败", zap.Error(err), zap.String("skillName", skillName))
+		db.logger.Error("Failed to update Skills statistical information", zap.Error(err), zap.String("skillName", skillName))
 		return err
 	}
 
@@ -122,10 +122,10 @@ func (db *DB) ClearSkillStats() error {
 	query := `DELETE FROM skill_stats`
 	_, err := db.Exec(query)
 	if err != nil {
-		db.logger.Error("清空Skills统计信息失败", zap.Error(err))
+		db.logger.Error("Clear Skills Statistical information failed", zap.Error(err))
 		return err
 	}
-	db.logger.Info("已清空所有Skills统计信息")
+	db.logger.Info("Cleared all Skills statistics")
 	return nil
 }
 
@@ -134,9 +134,9 @@ func (db *DB) ClearSkillStatsByName(skillName string) error {
 	query := `DELETE FROM skill_stats WHERE skill_name = ?`
 	_, err := db.Exec(query, skillName)
 	if err != nil {
-		db.logger.Error("清空指定skill统计信息失败", zap.Error(err), zap.String("skillName", skillName))
+		db.logger.Error("Empty Aspect skill Statistical information failed", zap.Error(err), zap.String("skillName", skillName))
 		return err
 	}
-	db.logger.Info("已清空指定skill统计信息", zap.String("skillName", skillName))
+	db.logger.Info("emptied specified skill statistical information", zap.String("skillName", skillName))
 	return nil
 }

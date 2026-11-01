@@ -1,6 +1,7 @@
 package project
 
 import (
+	"cyberstrike-ai/internal/legacytext"
 	"fmt"
 	"regexp"
 	"strings"
@@ -9,10 +10,10 @@ import (
 )
 
 var (
-	bodyDepFactLine   = regexp.MustCompile(`(?im)^[\s\-*]*依赖事实\s*[:：]\s*([a-zA-Z0-9][a-zA-Z0-9._/-]*)`)
-	bodyRelFactLine   = regexp.MustCompile(`(?im)^[\s\-*]*相关\s*fact_key\s*[:：]\s*([a-zA-Z0-9][a-zA-Z0-9._/-]*)`)
-	bodyAssocSection  = regexp.MustCompile(`(?im)^##\s*关联\s*$`)
-	bodySyncLinksHead = "结构化关系边（自动同步）"
+	bodyDepFactLine   = regexp.MustCompile(legacytext.FactDependencyPattern)
+	bodyRelFactLine   = regexp.MustCompile(legacytext.FactRelatedPattern)
+	bodyAssocSection  = regexp.MustCompile(legacytext.FactAssociationPattern)
+	bodySyncLinksHead = "Structured relationship edges (automatic sync)"
 )
 
 // ParseLinksFromBody 从 body「关联」段落解析 from 语义的关系边（无显式 links 时的兜底）。
@@ -84,10 +85,10 @@ func extractBodySyncLinksBlock(body string) string {
 			inSync = false
 			continue
 		}
-		if inAssoc && strings.HasPrefix(trim, "## ") && !strings.HasPrefix(trim, "## 关联") {
+		if inAssoc && strings.HasPrefix(trim, "## ") && !legacytext.HasPrefix(trim, "## Related") {
 			break
 		}
-		if inAssoc && strings.Contains(trim, bodySyncLinksHead) {
+		if inAssoc && legacytext.Contains(trim, bodySyncLinksHead) {
 			inSync = true
 			continue
 		}
@@ -113,7 +114,7 @@ func SyncBodyLinksSection(body string, edges []*database.ProjectFactEdge) string
 		return body
 	}
 	if body == "" {
-		return "## 关联\n" + block
+		return "## Related\n" + block
 	}
 	lines := strings.Split(body, "\n")
 	var out []string
@@ -131,10 +132,10 @@ func SyncBodyLinksSection(body string, edges []*database.ProjectFactEdge) string
 				if strings.HasPrefix(t, "## ") {
 					break
 				}
-				if strings.Contains(t, bodySyncLinksHead) {
+				if legacytext.Contains(t, bodySyncLinksHead) {
 					for j < len(lines) {
 						t2 := strings.TrimSpace(lines[j])
-						if t2 != "" && !strings.HasPrefix(t2, "-") && !strings.Contains(t2, ":") && !strings.Contains(t2, bodySyncLinksHead) {
+						if t2 != "" && !strings.HasPrefix(t2, "-") && !strings.Contains(t2, ":") && !legacytext.Contains(t2, bodySyncLinksHead) {
 							if strings.HasPrefix(t2, "##") {
 								break
 							}
@@ -163,7 +164,7 @@ func SyncBodyLinksSection(body string, edges []*database.ProjectFactEdge) string
 	}
 	if !replaced {
 		if !inAssoc {
-			out = append(out, "", "## 关联", block)
+			out = append(out, "", "## Related", block)
 		} else {
 			out = append(out, block)
 		}
@@ -187,7 +188,7 @@ func formatBodySyncLinksBlock(edges []*database.ProjectFactEdge) string {
 		written++
 	}
 	if written == 0 {
-		b.WriteString("\n  （暂无）")
+		b.WriteString("\n  (not yet)")
 	}
 	return b.String()
 }

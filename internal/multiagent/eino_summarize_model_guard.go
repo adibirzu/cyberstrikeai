@@ -229,7 +229,7 @@ func classicSummaryEmptyDiagnostics(msg *schema.Message) string {
 		}
 	}
 	if reasoningRunes > 0 {
-		fields = append(fields, "hint=模型返回了 reasoning_content 但没有返回可作为摘要正文的 content；请检查 DeepSeek thinking 是否已在摘要请求中关闭")
+		fields = append(fields, "hint=The model returned. reasoning_content But not returned as summary body content; Check. DeepSeek thinking Closed in summary request")
 	}
 	return strings.Join(fields, " ")
 }
@@ -273,7 +273,7 @@ func agenticSummaryEmptyDiagnostics(msg *schema.AgenticMessage) string {
 		)
 	}
 	if reasoningRunes > 0 {
-		fields = append(fields, "hint=模型返回了 reasoning block 但没有返回可作为摘要正文的 text block；请检查 DeepSeek thinking 是否已在摘要请求中关闭")
+		fields = append(fields, "hint=The model returned. reasoning block But not returned as summary body text block; Check. DeepSeek thinking Closed in summary request")
 	}
 	return strings.Join(fields, " ")
 }

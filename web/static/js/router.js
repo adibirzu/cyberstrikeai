@@ -124,7 +124,7 @@ function initRouter() {
             return;
         }
     }
-    
+
     // 默认显示仪表盘
     switchPage('dashboard');
 }
@@ -157,19 +157,19 @@ function switchPage(pageId) {
     document.querySelectorAll('.page').forEach(page => {
         page.classList.remove('active');
     });
-    
+
     // 显示目标页面
     targetPage.classList.add('active');
     currentPage = pageId;
-        
+
     const newHash = buildHashForPage(pageId);
     if (window.location.hash.slice(1) !== newHash) {
         window.location.hash = newHash;
     }
-        
+
     // 更新导航状态
     updateNavState(pageId);
-        
+
     // 页面特定的初始化
     initPage(pageId);
 
@@ -186,11 +186,11 @@ function updateNavState(pageId) {
         item.classList.remove('active');
         item.classList.remove('expanded');
     });
-    
+
     document.querySelectorAll('.nav-submenu-item').forEach(item => {
         item.classList.remove('active');
     });
-    
+
     // 设置活动状态
     if (pageId === 'hitl' || pageId === 'tool-guard') {
         const securityItem = document.querySelector('.nav-item[data-page="security"]');
@@ -216,7 +216,7 @@ function updateNavState(pageId) {
             // 展开MCP子菜单
             mcpItem.classList.add('expanded');
         }
-        
+
         const submenuItem = document.querySelector(`.nav-submenu-item[data-page="${pageId}"]`);
         if (submenuItem) {
             submenuItem.classList.add('active');
@@ -229,7 +229,7 @@ function updateNavState(pageId) {
             // 展开知识子菜单
             knowledgeItem.classList.add('expanded');
         }
-        
+
         const submenuItem = document.querySelector(`.nav-submenu-item[data-page="${pageId}"]`);
         if (submenuItem) {
             submenuItem.classList.add('active');
@@ -242,7 +242,7 @@ function updateNavState(pageId) {
             // 展开Skills子菜单
             skillsItem.classList.add('expanded');
         }
-        
+
         const submenuItem = document.querySelector(`.nav-submenu-item[data-page="${pageId}"]`);
         if (submenuItem) {
             submenuItem.classList.add('active');
@@ -276,7 +276,7 @@ function updateNavState(pageId) {
             // 展开角色子菜单
             rolesItem.classList.add('expanded');
         }
-        
+
         const submenuItem = document.querySelector(`.nav-submenu-item[data-page="${pageId}"]`);
         if (submenuItem) {
             submenuItem.classList.add('active');
@@ -302,9 +302,9 @@ function getNavSubmenuItems(navItem) {
 function toggleSubmenu(menuId) {
     const sidebar = document.getElementById('main-sidebar');
     const navItem = document.querySelector(`.nav-item[data-page="${menuId}"]`);
-    
+
     if (!navItem) return;
-    
+
     const collapsed = sidebar && sidebar.classList.contains('collapsed');
 
     // 检查侧边栏是否折叠
@@ -344,12 +344,12 @@ function showSubmenuPopup(navItem, menuId) {
 
     const navItemContent = navItem.querySelector('.nav-item-content');
     const submenu = navItem.querySelector('.nav-submenu');
-    
+
     if (!submenu) return;
-    
+
     // 获取菜单位置
     const rect = navItemContent.getBoundingClientRect();
-    
+
     // 创建弹出菜单
     const popup = document.createElement('div');
     popup.className = 'submenu-popup';
@@ -358,7 +358,7 @@ function showSubmenuPopup(navItem, menuId) {
     popup.style.left = (rect.right + 8) + 'px';
     popup.style.top = rect.top + 'px';
     popup.style.zIndex = '1000';
-    
+
     // 复制子菜单项到弹出菜单
     const submenuItems = submenu.querySelectorAll('.nav-submenu-item');
     submenuItems.forEach(item => {
@@ -366,32 +366,32 @@ function showSubmenuPopup(navItem, menuId) {
         const popupItem = document.createElement('div');
         popupItem.className = 'submenu-popup-item';
         popupItem.textContent = item.textContent.trim();
-        
+
         // 检查是否是当前激活的页面
         const pageId = item.getAttribute('data-page');
         if (pageId && document.querySelector(`.nav-submenu-item[data-page="${pageId}"].active`)) {
             popupItem.classList.add('active');
         }
-        
+
         popupItem.onclick = function(e) {
             e.stopPropagation();
             e.preventDefault();
-            
+
             // 获取页面ID并切换
             const pageId = item.getAttribute('data-page');
             if (pageId) {
                 switchPage(pageId);
             }
-            
+
             // 关闭弹出菜单
             popup.remove();
             document.removeEventListener('click', closePopup);
         };
         popup.appendChild(popupItem);
     });
-    
+
     document.body.appendChild(popup);
-    
+
     // 点击外部关闭弹出菜单
     const closePopup = function(e) {
         if (!popup.contains(e.target) && !navItem.contains(e.target)) {
@@ -399,7 +399,7 @@ function showSubmenuPopup(navItem, menuId) {
             document.removeEventListener('click', closePopup);
         }
     };
-    
+
     // 延迟添加事件监听，避免立即触发
     setTimeout(() => {
         document.addEventListener('click', closePopup);
@@ -479,7 +479,7 @@ async function initPage(pageId) {
                     // 延迟加载，让页面先渲染
                     setTimeout(() => {
                         loadToolsList(1, '').catch(err => {
-                            console.error('加载工具列表失败:', err);
+                            console.error('Failed to load tool list:', err);
                         });
                     }, 100);
                 }
@@ -488,7 +488,7 @@ async function initPage(pageId) {
                 startLoadMcpTools();
                 if (typeof loadExternalMCPs === 'function') {
                     loadExternalMCPs().catch(err => {
-                        console.warn('加载外部MCP列表失败:', err);
+                        console.warn('Failed to load external MCP list:', err);
                     });
                 }
                 if (typeof startExternalMcpPoll === 'function') {
@@ -501,7 +501,7 @@ async function initPage(pageId) {
             if (typeof loadConfig === 'function' && canLoadFullConfig) {
                 loadConfig(false, { silent: true })
                     .catch(err => {
-                        console.warn('加载配置失败（将继续加载 MCP 列表）:', err);
+                        console.warn('Loading configuration failed (the MCP list continues to be loaded):', err);
                     })
                     .finally(afterMcpConfigReady);
             } else {
@@ -618,7 +618,7 @@ async function initPage(pageId) {
             }
             break;
     }
-    
+
     // 清理其他页面的定时器
     if (pageId !== 'tasks' && typeof cleanupTasksPage === 'function') {
         cleanupTasksPage();
@@ -638,14 +638,14 @@ document.addEventListener('DOMContentLoaded', function() {
     initRouter();
     document.documentElement.classList.remove('initial-route-pending');
     initSidebarState();
-    
+
     // 监听hash变化
     window.addEventListener('hashchange', function() {
         const hash = window.location.hash.slice(1);
         // 处理带参数的hash（如 chat?conversation=xxx）
         const hashParts = hash.split('?');
         let pageId = hashParts[0].replace(/^#?\//, '');
-        
+
         if (pageId === 'c2') pageId = 'c2-listeners';
         // 与首屏解析同一套别名：#system-update 落到系统设置页的「一键更新」分区。
         const settingsSection = pageId === 'system-update' ? 'update' : pageId === 'settings' && new URLSearchParams(hashParts.slice(1).join('?')).get('section') === 'token-usage' ? 'token-usage' : '';

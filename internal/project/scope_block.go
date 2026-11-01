@@ -28,16 +28,16 @@ func BuildScopeBlock(proj *database.Project) string {
 
 	var payload projectScopePayload
 	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
-		return fmt.Sprintf("## 项目测试范围（project: %s）\n（scope_json 非合法 JSON，请人工核对配置）\n```\n%s\n```\n"+
-			"仅对明确授权目标执行测试；超出范围须停止并说明。\n", proj.Name, truncateRunes(raw, 800))
+		return fmt.Sprintf("## Project Test Scope (project: %s) \n(scope_json, invalid JSON, manual check configuration)\n```\n%s\n```\n"+
+			"Only testing of clearly authorized targets is carried out; the scope of the deviation must be discontinued and described.\n", proj.Name, truncateRunes(raw, 800))
 	}
 
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("## 项目测试范围（project: %s, id: %s）\n", proj.Name, proj.ID))
-	b.WriteString("以下为授权边界，**必须遵守**：仅测试列出的 targets，避开 exclude，不得擅自扩大范围。\n")
+	b.WriteString(fmt.Sprintf("## Project Test Scope (project: %s, id: %s) \n", proj.Name, proj.ID))
+	b.WriteString("The following are authorized boundaries,** which must be observed**: tests only for listed targets, avoid exclude, and do not extend the scope without permission.\n")
 
 	if len(payload.Targets) > 0 {
-		b.WriteString("\n**允许测试（targets）**：\n")
+		b.WriteString("\n** Allowed testing (targets)**\n")
 		for _, t := range payload.Targets {
 			t = strings.TrimSpace(t)
 			if t != "" {
@@ -46,7 +46,7 @@ func BuildScopeBlock(proj *database.Project) string {
 		}
 	}
 	if len(payload.Exclude) > 0 {
-		b.WriteString("\n**明确排除（exclude）**：\n")
+		b.WriteString("\n**Express exclusion (exclude) **: \n")
 		for _, t := range payload.Exclude {
 			t = strings.TrimSpace(t)
 			if t != "" {
@@ -55,14 +55,14 @@ func BuildScopeBlock(proj *database.Project) string {
 		}
 	}
 	if n := strings.TrimSpace(payload.Notes); n != "" {
-		b.WriteString("\n**说明（notes）**：\n" + n + "\n")
+		b.WriteString("\n**Annotations (notes) **: \n" + n + "\n")
 	}
 	if len(payload.Targets) == 0 && len(payload.Exclude) == 0 && strings.TrimSpace(payload.Notes) == "" {
-		b.WriteString("\n（scope_json 已配置但未识别 targets/exclude/notes 字段，原始内容供参考）\n```json\n")
+		b.WriteString("\n (scope_json Configured but not recognized targets/exclude/notes Fields, Original for information) \n```json\n")
 		b.WriteString(truncateRunes(raw, 1200))
 		b.WriteString("\n```\n")
 	}
-	b.WriteString("\n若目标不在 targets 内或命中 exclude，不得主动扫描/利用；需用户明确扩大授权后再继续。\n")
+	b.WriteString("\nIf the target is not here, targets Internal or hits exclude, No active scan./Utilization; Continue after users have clearly expanded their authorization.\n")
 	return b.String()
 }
 

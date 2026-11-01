@@ -39,21 +39,21 @@ test('至少抽到一批键，防止正则整体失配后空集通过', () => {
 
 for (const locale of LOCALES) {
     test(`${locale} 覆盖移动端引用的每一个键`, () => {
-        const dict = JSON.parse(fs.readFileSync(`web/static/i18n/${locale}.json`, 'utf8'));
+        const dict = JSON.parse(fs.readFileSync((locale === 'zh-CN' ? 'maintenance/vendor-locales/zh-CN.json' : `web/static/i18n/${locale}.json`), 'utf8'));
         const missing = [...keys].filter(k => typeof lookup(dict, k) !== 'string' || !lookup(dict, k).trim());
         assert.deepEqual(missing, [], `${locale} 缺少可用译文: ${missing.join(', ')}`);
     });
 }
 
 test('三种语言的 mobile 命名空间键集完全一致', () => {
-    const sets = LOCALES.map(l => Object.keys(JSON.parse(fs.readFileSync(`web/static/i18n/${l}.json`, 'utf8')).mobile).sort());
+    const sets = LOCALES.map(l => Object.keys(JSON.parse(fs.readFileSync((l === 'zh-CN' ? 'maintenance/vendor-locales/zh-CN.json' : `web/static/i18n/${l}.json`), 'utf8')).mobile).sort());
     assert.deepEqual(sets[1], sets[0], 'en-US 与 zh-CN 键集不同');
     assert.deepEqual(sets[2], sets[0], 'ru-RU 与 zh-CN 键集不同');
 });
 
 test('带插值的文案在三种语言里都保留占位符', () => {
     for (const locale of LOCALES) {
-        const dict = JSON.parse(fs.readFileSync(`web/static/i18n/${locale}.json`, 'utf8'));
+        const dict = JSON.parse(fs.readFileSync((locale === 'zh-CN' ? 'maintenance/vendor-locales/zh-CN.json' : `web/static/i18n/${locale}.json`), 'utf8'));
         assert.match(lookup(dict, 'mobile.themeNow'), /\{\{\s*name\s*\}\}/, `${locale} 的 themeNow 丢了 {{name}}`);
     }
 });

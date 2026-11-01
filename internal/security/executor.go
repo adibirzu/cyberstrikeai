@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"cyberstrike-ai/internal/childenv"
 	"cyberstrike-ai/internal/config"
 	"cyberstrike-ai/internal/mcp"
 	"cyberstrike-ai/internal/tooloutput"
@@ -112,7 +113,7 @@ func (e *Executor) buildToolIndex() {
 			e.toolIndex[e.config.Tools[i].Name] = &e.config.Tools[i]
 		}
 	}
-	e.logger.Debug("工具索引构建完成",
+	e.logger.Debug("Tool Index Build Complete",
 		zap.Int("totalTools", len(e.config.Tools)),
 		zap.Int("enabledTools", len(e.toolIndex)),
 	)
@@ -120,29 +121,34 @@ func (e *Executor) buildToolIndex() {
 
 // ExecuteTool 执行安全工具
 func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[string]interface{}) (*mcp.ToolResult, error) {
-	e.logger.Debug("ExecuteTool被调用",
+	e.logger.Debug("ExecuteTool called.",
 		zap.String("toolName", toolName),
 		zap.Any("args", args),
 	)
 
 	// 特殊处理：exec工具直接执行系统命令
 	if toolName == "exec" {
-		e.logger.Debug("执行exec工具")
+		for _, configured := range e.config.Tools {
+			if configured.Name == "exec" && !configured.Enabled {
+				return nil, fmt.Errorf("tool exec is disabled")
+			}
+		}
+		e.logger.Debug("Implement exec tool")
 		return e.executeSystemCommand(ctx, args)
 	}
 
 	// 使用索引查找工具配置（O(1) 查找）
 	toolConfig, exists := e.toolIndex[toolName]
 	if !exists {
-		e.logger.Error("工具未找到或未启用",
+		e.logger.Error("Tools not found or not enabled",
 			zap.String("toolName", toolName),
 			zap.Int("totalTools", len(e.config.Tools)),
 			zap.Int("enabledTools", len(e.toolIndex)),
 		)
-		return nil, fmt.Errorf("工具 %s 未找到或未启用", toolName)
+		return nil, fmt.Errorf("Tools %s not found or not enabled", toolName)
 	}
 
-	e.logger.Debug("找到工具配置",
+	e.logger.Debug("Found Tool Configuration",
 		zap.String("toolName", toolName),
 		zap.String("command", toolConfig.Command),
 		zap.Strings("args", toolConfig.Args),
@@ -150,7 +156,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 
 	// 特殊处理：内部工具（command 以 "internal:" 开头）
 	if strings.HasPrefix(toolConfig.Command, "internal:") {
-		e.logger.Debug("执行内部工具",
+		e.logger.Debug("Implementation of internal tools",
 			zap.String("toolName", toolName),
 			zap.String("command", toolConfig.Command),
 		)
@@ -160,7 +166,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 	// 构建命令 - 根据工具类型使用不同的参数格式
 	cmdArgs := e.buildCommandArgs(toolName, toolConfig, args)
 
-	e.logger.Debug("构建命令参数完成",
+	e.logger.Debug("Build command parameters complete",
 		zap.String("toolName", toolName),
 		zap.Strings("cmdArgs", cmdArgs),
 		zap.Int("argsCount", len(cmdArgs)),
@@ -168,7 +174,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 
 	// 验证命令参数
 	if len(cmdArgs) == 0 {
-		e.logger.Warn("命令参数为空",
+		e.logger.Warn("Command parameter is empty",
 			zap.String("toolName", toolName),
 			zap.Any("inputArgs", args),
 		)
@@ -176,7 +182,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 			Content: []mcp.Content{
 				{
 					Type: "text",
-					Text: fmt.Sprintf("错误: 工具 %s 缺少必需的参数。接收到的参数: %v", toolName, args),
+					Text: fmt.Sprintf("Error: Tools %s lack the required parameters. Incoming arguments: %v", toolName, args),
 				},
 			},
 			IsError: true,
@@ -189,7 +195,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 	attachNonInteractiveStdin(cmd)
 	_ = prepareShellCmdSession(cmd)
 
-	e.logger.Debug("执行安全工具",
+	e.logger.Debug("Implementation of security tools",
 		zap.String("tool", toolName),
 		zap.Strings("args", cmdArgs),
 	)
@@ -202,7 +208,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 		cb = e.wrapToolOutputCallback(ctx, cb)
 		output, err = streamCommandOutput(ctx, cmd, cb, ResolveShellNoOutputTimeoutSeconds(e.shellNoOutputTimeoutSec), e.toolOutputMaxBytes, spill)
 		if err != nil && shouldRetryWithPTY(output) {
-			e.logger.Info("检测到工具需要 TTY，使用 PTY 重试",
+			e.logger.Info("Tool detection requires TTY, retry using PTY",
 				zap.String("tool", toolName),
 			)
 			cmd2 := exec.CommandContext(ctx, toolConfig.Command, cmdArgs...)
@@ -214,7 +220,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 		// 非流式：内存缓冲 + ctx 取消杀进程组；行为对齐原 CombinedOutput，避免双流管道 fan-in 死锁。
 		output, err = combinedOutputCancellableWithLimit(ctx, cmd, e.toolOutputMaxBytes, spill)
 		if err != nil && shouldRetryWithPTY(output) {
-			e.logger.Info("检测到工具需要 TTY，使用 PTY 重试",
+			e.logger.Info("Tool detection requires TTY, retry using PTY",
 				zap.String("tool", toolName),
 			)
 			cmd2 := exec.CommandContext(ctx, toolConfig.Command, cmdArgs...)
@@ -229,7 +235,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 		if exitCode != nil && toolConfig.AllowedExitCodes != nil {
 			for _, allowedCode := range toolConfig.AllowedExitCodes {
 				if *exitCode == allowedCode {
-					e.logger.Debug("工具执行完成（退出码在允许列表中）",
+					e.logger.Debug("Tool execution complete (exit code in allowed list)",
 						zap.String("tool", toolName),
 						zap.Int("exitCode", *exitCode),
 						zap.String("output", string(output)),
@@ -247,7 +253,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 			}
 		}
 
-		e.logger.Error("工具执行失败",
+		e.logger.Error("Tool execution failed",
 			zap.String("tool", toolName),
 			zap.Error(err),
 			zap.Int("exitCode", getExitCodeValue(err)),
@@ -257,14 +263,14 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 			Content: []mcp.Content{
 				{
 					Type: "text",
-					Text: fmt.Sprintf("工具执行失败: %v\n输出: %s", err, string(output)),
+					Text: fmt.Sprintf("Tool execution failed: %v\nOutput: %s", err, string(output)),
 				},
 			},
 			IsError: true,
 		}, nil
 	}
 
-	e.logger.Debug("工具执行成功",
+	e.logger.Debug("Tool implementation succeeded",
 		zap.String("tool", toolName),
 		zap.String("output", string(output)),
 	)
@@ -282,7 +288,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 
 // RegisterTools 注册工具到MCP服务器
 func (e *Executor) RegisterTools(mcpServer *mcp.Server) {
-	e.logger.Debug("开始注册工具",
+	e.logger.Debug("Start registration tool",
 		zap.Int("totalTools", len(e.config.Tools)),
 		zap.Int("enabledTools", len(e.toolIndex)),
 	)
@@ -292,7 +298,7 @@ func (e *Executor) RegisterTools(mcpServer *mcp.Server) {
 
 	for i, toolConfig := range e.config.Tools {
 		if !toolConfig.Enabled {
-			e.logger.Debug("跳过未启用的工具",
+			e.logger.Debug("Skip unenabled tools",
 				zap.String("tool", toolConfig.Name),
 			)
 			continue
@@ -330,7 +336,7 @@ func (e *Executor) RegisterTools(mcpServer *mcp.Server) {
 		}
 
 		handler := func(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
-			e.logger.Debug("工具handler被调用",
+			e.logger.Debug("toolhandler called",
 				zap.String("toolName", toolName),
 				zap.Any("args", args),
 			)
@@ -338,14 +344,14 @@ func (e *Executor) RegisterTools(mcpServer *mcp.Server) {
 		}
 
 		mcpServer.RegisterTool(tool, handler)
-		e.logger.Debug("注册安全工具成功",
+		e.logger.Debug("Register security tool successfully",
 			zap.String("tool", toolConfigCopy.Name),
 			zap.String("command", toolConfigCopy.Command),
 			zap.Int("index", i),
 		)
 	}
 
-	e.logger.Debug("工具注册完成",
+	e.logger.Debug("Tool registration complete",
 		zap.Int("registeredCount", len(e.config.Tools)),
 	)
 }
@@ -413,7 +419,7 @@ func (e *Executor) buildCommandArgs(toolName string, toolConfig *config.ToolConf
 			if value == nil {
 				if param.Required {
 					// 必需参数缺失，返回空数组让上层处理错误
-					e.logger.Warn("缺少必需的标志参数",
+					e.logger.Warn("Missing required marker parameters",
 						zap.String("tool", toolName),
 						zap.String("param", param.Name),
 					)
@@ -459,7 +465,7 @@ func (e *Executor) buildCommandArgs(toolName string, toolConfig *config.ToolConf
 			formattedValue := e.formatParamValue(param, value)
 			if strings.TrimSpace(formattedValue) == "" {
 				if param.Required {
-					e.logger.Warn("必需参数为空",
+					e.logger.Warn("Required parameter is empty",
 						zap.String("tool", toolName),
 						zap.String("param", param.Name),
 					)
@@ -539,7 +545,7 @@ func (e *Executor) buildCommandArgs(toolName string, toolConfig *config.ToolConf
 					if value == nil {
 						if param.Required {
 							// 必需参数缺失，返回空数组让上层处理错误
-							e.logger.Warn("缺少必需的位置参数",
+							e.logger.Warn("Missing required position parameters",
 								zap.String("tool", toolName),
 								zap.String("param", param.Name),
 								zap.Int("position", *param.Position),
@@ -778,7 +784,7 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 			Content: []mcp.Content{
 				{
 					Type: "text",
-					Text: "错误: 缺少command参数",
+					Text: "Error: missing command arguments",
 				},
 			},
 			IsError: true,
@@ -790,7 +796,7 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 			Content: []mcp.Content{
 				{
 					Type: "text",
-					Text: "错误: command参数不能为空",
+					Text: "Error: command Parameters cannot be empty",
 				},
 			},
 			IsError: true,
@@ -798,7 +804,7 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 	}
 
 	// 安全检查：记录执行的命令
-	e.logger.Warn("执行系统命令",
+	e.logger.Warn("Execute System Commands",
 		zap.String("command", command),
 	)
 
@@ -830,7 +836,7 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 	ConfigureShellCmdForAgentExecute(cmd)
 
 	// 执行命令
-	e.logger.Info("执行系统命令",
+	e.logger.Info("Execute System Commands",
 		zap.String("command", command),
 		zap.String("shell", shell),
 		zap.String("workdir", workDir),
@@ -841,9 +847,9 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 		job := strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(command), "&"))
 		session, err := StartManagedBackground(ctx, shell, job, workDir)
 		if err != nil {
-			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: fmt.Sprintf("后台命令启动失败: %v", err)}}, IsError: true}, nil
+			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: fmt.Sprintf("Background command failed to start: %v", err)}}, IsError: true}, nil
 		}
-		return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: fmt.Sprintf("后台命令已启动\n命令: %s\n进程组ID: %d\n\n后台进程由本轮任务托管，任务结束时自动清理。", command, session.rootPID)}}}, nil
+		return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: fmt.Sprintf("Background command started.\nCommand: %s\nProcess group ID: %d\n\nThis background process belongs to the current task and is automatically cleaned up when the task ends.", command, session.rootPID)}}}, nil
 	}
 
 	// 非后台命令：等待输出
@@ -855,7 +861,7 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 		cb = e.wrapToolOutputCallback(ctx, cb)
 		output, err = streamCommandOutput(ctx, cmd, cb, ResolveShellNoOutputTimeoutSeconds(e.shellNoOutputTimeoutSec), e.toolOutputMaxBytes, spill)
 		if err != nil && shouldRetryWithPTY(output) {
-			e.logger.Info("检测到系统命令需要 TTY，使用 PTY 重试")
+			e.logger.Info("Detect system commands for TTY, retry using PTY")
 			cmd2 := exec.CommandContext(ctx, shell, "-c", command)
 			if workDir != "" {
 				cmd2.Dir = workDir
@@ -866,7 +872,7 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 	} else {
 		output, err = combinedOutputCancellableWithLimit(ctx, cmd, e.toolOutputMaxBytes, spill)
 		if err != nil && shouldRetryWithPTY(output) {
-			e.logger.Info("检测到系统命令需要 TTY，使用 PTY 重试")
+			e.logger.Info("Detect system commands for TTY, retry using PTY")
 			cmd2 := exec.CommandContext(ctx, shell, "-c", command)
 			if workDir != "" {
 				cmd2.Dir = workDir
@@ -876,7 +882,7 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 		}
 	}
 	if err != nil {
-		e.logger.Error("系统命令执行失败",
+		e.logger.Error("System command execution failed",
 			zap.String("command", command),
 			zap.Error(err),
 			zap.String("output", string(output)),
@@ -892,7 +898,7 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 		}, nil
 	}
 
-	e.logger.Info("系统命令执行成功",
+	e.logger.Info("System command executed successfully",
 		zap.String("command", command),
 		zap.String("output_length", fmt.Sprintf("%d", len(output))),
 	)
@@ -1261,7 +1267,7 @@ func applyDefaultTerminalEnv(cmd *exec.Cmd) {
 	}
 	// 仅在未显式设置 Env 时，继承当前进程环境
 	if cmd.Env == nil {
-		cmd.Env = os.Environ()
+		cmd.Env = childenv.Build(nil)
 	}
 	cmd.Env = ApplyNonInteractivePagerEnv(cmd.Env)
 	// 如果用户已设置 TERM/COLUMNS/LINES，则不覆盖
@@ -1383,7 +1389,7 @@ func runCommandWithPTY(ctx context.Context, cmd *exec.Cmd, cb ToolOutputCallback
 // executeInternalTool 执行内部工具（不执行外部命令）
 func (e *Executor) executeInternalTool(ctx context.Context, toolName string, command string, args map[string]interface{}) (*mcp.ToolResult, error) {
 	internalToolType := strings.TrimPrefix(command, "internal:")
-	e.logger.Warn("未知的内部工具",
+	e.logger.Warn("Unknown internal tool",
 		zap.String("toolName", toolName),
 		zap.String("internalToolType", internalToolType),
 	)
@@ -1391,7 +1397,7 @@ func (e *Executor) executeInternalTool(ctx context.Context, toolName string, com
 		Content: []mcp.Content{
 			{
 				Type: "text",
-				Text: fmt.Sprintf("错误: 未知的内部工具类型: %s", internalToolType),
+				Text: fmt.Sprintf("Error: Unknown internal tool type: %s", internalToolType),
 			},
 		},
 		IsError: true,
@@ -1414,7 +1420,7 @@ func (e *Executor) buildInputSchema(toolConfig *config.ToolConfig) map[string]in
 		for _, param := range toolConfig.Parameters {
 			// 跳过 name 为空的参数（避免 YAML 中 name: null 或空导致非法 schema）
 			if strings.TrimSpace(param.Name) == "" {
-				e.logger.Debug("跳过无名称的参数",
+				e.logger.Debug("Skip unnamed arguments",
 					zap.String("tool", toolConfig.Name),
 					zap.String("type", param.Type),
 				)
@@ -1465,7 +1471,7 @@ func (e *Executor) buildInputSchema(toolConfig *config.ToolConfig) map[string]in
 	// 如果没有定义参数配置，返回空schema
 	// 这种情况下工具可能只使用固定参数（args字段）
 	// 或者需要通过YAML配置文件定义参数
-	e.logger.Warn("工具未定义参数配置，返回空schema",
+	e.logger.Warn("Tools do not define parameter configuration, return empty schema",
 		zap.String("tool", toolConfig.Name),
 	)
 	return schema
@@ -1488,7 +1494,7 @@ func (e *Executor) convertToOpenAIType(configType string) string {
 		return configType
 	default:
 		// 默认返回原类型，但记录警告
-		e.logger.Warn("未知的参数类型，使用原类型",
+		e.logger.Warn("Unknown parameter type, use original type",
 			zap.String("type", configType),
 		)
 		return configType
