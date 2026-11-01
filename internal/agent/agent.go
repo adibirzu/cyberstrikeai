@@ -298,7 +298,7 @@ func (a *Agent) EinoSingleAgentSystemInstruction() string {
 				path = filepath.Join(base, path)
 			}
 			if b, err := os.ReadFile(path); err != nil {
-				a.logger.Warn("读取单代理 system_prompt_path 失败，使用内置提示", zap.String("path", path), zap.Error(err))
+				a.logger.Warn("Failed to read list agent system_prompt_path, use internal hint", zap.String("path", path), zap.Error(err))
 			} else if s := strings.TrimSpace(string(b)); s != "" {
 				systemPrompt = s
 			}
@@ -356,7 +356,7 @@ func (a *Agent) getAvailableTools(roleTools []string) []Tool {
 		externalTools, err := a.externalMCPMgr.GetAllTools(ctx)
 		extMap := make(map[string]string)
 		if err != nil {
-			a.logger.Warn("获取外部MCP工具失败", zap.Error(err))
+			a.logger.Warn("Failed to acquire external MCP tool", zap.Error(err))
 		} else {
 			// 获取外部MCP配置，用于检查工具启用状态
 			externalMCPConfigs := a.externalMCPMgr.GetConfigs()
@@ -433,7 +433,7 @@ func (a *Agent) getAvailableTools(roleTools []string) []Tool {
 		a.mu.Unlock()
 	}
 
-	a.logger.Debug("获取可用工具列表",
+	a.logger.Debug("Get a list of available tools",
 		zap.Int("internalTools", len(mcpTools)),
 		zap.Int("totalTools", len(tools)),
 	)
@@ -522,16 +522,16 @@ type ToolExecutionResult struct {
 
 func buildToolFailureMessage(toolName, detail string, err error) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "工具调用失败\n\n")
-	fmt.Fprintf(&b, "工具名称: %s\n", toolName)
-	fmt.Fprintf(&b, "错误详情: %s", detail)
+	fmt.Fprintf(&b, "Tool Call Failed\n\n")
+	fmt.Fprintf(&b, "Tool name: %s\n", toolName)
+	fmt.Fprintf(&b, "Error Details: %s", detail)
 	return strings.TrimRight(b.String(), "\n")
 }
 
 // executeToolViaMCP 通过MCP执行工具
 // 即使工具执行失败，也返回结果而不是错误，让AI能够处理错误情况
 func (a *Agent) executeToolViaMCP(ctx context.Context, toolName string, args map[string]interface{}) (*ToolExecutionResult, error) {
-	a.logger.Info("通过MCP执行工具",
+	a.logger.Info("Implementation tool through MCP",
 		zap.String("tool", toolName),
 		zap.Any("args", args),
 	)
@@ -541,11 +541,11 @@ func (a *Agent) executeToolViaMCP(ctx context.Context, toolName string, args map
 		conversationID := agentConversationIDFromContext(ctx)
 		if conversationID != "" {
 			args["conversation_id"] = conversationID
-			a.logger.Debug("自动添加conversation_id到record_vulnerability工具",
+			a.logger.Debug("AutoAdd conversation_id Present. record_vulnerability Tools",
 				zap.String("conversation_id", conversationID),
 			)
 		} else {
-			a.logger.Warn("record_vulnerability工具调用时conversation_id为空")
+			a.logger.Warn("record_vulnerability When tools are called conversation_id Empty")
 		}
 	}
 
@@ -574,7 +574,7 @@ func (a *Agent) executeToolViaMCP(ctx context.Context, toolName string, args map
 
 	if isExternalTool && a.externalMCPMgr != nil {
 		// 使用原始工具名称调用外部MCP工具
-		a.logger.Debug("调用外部MCP工具",
+		a.logger.Debug("Call external MCP tool",
 			zap.String("openAIName", toolName),
 			zap.String("originalName", originalToolName),
 		)
@@ -592,9 +592,9 @@ func (a *Agent) executeToolViaMCP(ctx context.Context, toolName string, args map
 			timeoutMinutes = a.agentConfig.ToolTimeoutMinutes
 		}
 		if errors.Is(err, context.Canceled) {
-			detail = "工具调用已被手动终止（MCP 监控页）。智能体将携带此结果继续后续步骤，整条任务不会因此被停止。"
+			detail = "The tool call was manually stopped from the MCP monitor. Continue the task using this result."
 		} else if errors.Is(err, context.DeadlineExceeded) {
-			detail = fmt.Sprintf("工具执行超过 %d 分钟被自动终止（可在 config.yaml 的 agent.tool_timeout_minutes 中调整）", timeoutMinutes)
+			detail = fmt.Sprintf("Tool execution exceeded %d minutes and was automatically stopped (configure agent.tool_timeout_minutes in config.yaml)", timeoutMinutes)
 		}
 		errorMsg := buildToolFailureMessage(toolName, detail, err)
 
@@ -628,7 +628,7 @@ func (a *Agent) UpdateConfig(cfg *config.OpenAIConfig) {
 	defer a.mu.Unlock()
 	a.config = cfg
 
-	a.logger.Info("Agent配置已更新",
+	a.logger.Info("Agent configuration updated",
 		zap.String("base_url", cfg.BaseURL),
 		zap.String("model", cfg.Model),
 	)
@@ -640,7 +640,7 @@ func (a *Agent) UpdateMaxIterations(maxIterations int) {
 	defer a.mu.Unlock()
 	if maxIterations > 0 {
 		a.maxIterations = maxIterations
-		a.logger.Info("Agent最大迭代次数已更新", zap.Int("max_iterations", maxIterations))
+		a.logger.Info("Agent maximum iterative number updated", zap.Int("max_iterations", maxIterations))
 	}
 }
 
@@ -653,7 +653,7 @@ func (a *Agent) UpdateToolDescriptionMode(mode string) {
 		mode = "short"
 	}
 	a.toolDescriptionMode = mode
-	a.logger.Debug("Agent工具描述模式已更新", zap.String("tool_description_mode", mode))
+	a.logger.Debug("Agent Tool Description Mode updated", zap.String("tool_description_mode", mode))
 }
 
 // RepairOrphanToolMessages 清理失去配对的tool消息和未完成的tool_calls，避免OpenAI报错
@@ -734,7 +734,7 @@ func (a *Agent) repairOrphanToolMessages(messages *[]ChatMessage) bool {
 				// 更新消息的ToolCalls
 				if len(validToolCalls) != originalCount {
 					cleaned[i].ToolCalls = validToolCalls
-					a.logger.Info("移除了未完成的tool_calls，避免重新执行",
+					a.logger.Info("Remove uncompleted tool_calls to avoid re-execution",
 						zap.Int("removed_count", originalCount-len(validToolCalls)),
 					)
 				}
@@ -744,7 +744,7 @@ func (a *Agent) repairOrphanToolMessages(messages *[]ChatMessage) bool {
 	}
 
 	if removed {
-		a.logger.Warn("修复了对话历史中的tool消息和tool_calls",
+		a.logger.Warn("It's the history of dialogue. tool Message and tool_calls",
 			zap.Int("original_messages", len(msgs)),
 			zap.Int("cleaned_messages", len(cleaned)),
 		)
@@ -817,7 +817,7 @@ func (a *Agent) UpdateMCPExecutionDisplayResult(executionID, resultText string) 
 	}
 	text := resultText
 	if strings.TrimSpace(text) == "" {
-		text = "（无输出）"
+		text = "(no output)"
 	}
 	tr := &mcp.ToolResult{
 		Content: []mcp.Content{{Type: "text", Text: text}},

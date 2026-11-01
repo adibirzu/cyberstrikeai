@@ -8,7 +8,7 @@ args:
     import sys
 
     if len(sys.argv) < 2:
-        sys.stderr.write("缺少目标地址\n")
+        sys.stderr.write('Missing target address\n')
         sys.exit(1)
 
     target = sys.argv[1]
@@ -47,68 +47,49 @@ args:
         sys.stderr.write(proc.stderr)
     sys.exit(proc.returncode)
 enabled: true
-short_description: "RPC枚举工具"
+short_description: "Query RPC services and run selected RPC commands"
 description: |
-  Rpcclient是一个RPC客户端工具，用于枚举Windows/Samba系统信息。
+  Query RPC services and run selected RPC commands.
 
-  **主要功能：**
-  - RPC枚举
-  - 用户和组枚举
-  - 域信息查询
-  - 系统信息收集
-
-  **使用场景：**
-  - Windows系统渗透测试
-  - Samba枚举
-  - 域环境侦察
-  - 安全测试
+  Use the parameters below to select the target and native options. Additional native arguments are supported where exposed by this recipe.
 parameters:
   - name: "target"
     type: "string"
-    description: "目标IP地址"
+    description: "Target host, address or resource accepted by this tool."
     required: true
     position: 0
     format: "positional"
   - name: "username"
     type: "string"
-    description: "用户名"
+    description: "Username to use. Default: ."
     required: false
     default: ""
     position: 1
     format: "positional"
   - name: "password"
     type: "string"
-    description: "密码"
+    description: "Password to use. Default: ."
     required: false
     default: ""
     position: 2
     format: "positional"
   - name: "domain"
     type: "string"
-    description: "域名"
+    description: "Target domain name. Default: ."
     required: false
     default: ""
     position: 3
     format: "positional"
   - name: "commands"
     type: "string"
-    description: "RPC命令（分号分隔）"
+    description: "Native commands to execute. Default: enumdomusers;enumdomgroups;querydominfo."
     required: false
     default: "enumdomusers;enumdomgroups;querydominfo"
     position: 4
     format: "positional"
   - name: "additional_args"
     type: "string"
-    description: |
-      额外的rpcclient参数。用于传递未在参数列表中定义的rpcclient选项。
-
-      **示例值：**
-      - 根据工具特性添加常用参数示例
-
-      **注意事项：**
-      - 多个参数用空格分隔
-      - 确保参数格式正确，避免命令注入
-      - 此参数会直接追加到命令末尾
+    description: "Additional native command-line arguments, appended according to this recipe. Default: ."
     required: false
     default: ""
     position: 5

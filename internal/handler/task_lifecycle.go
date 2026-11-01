@@ -17,7 +17,7 @@ func (h *AgentHandler) ShutdownTasks() {
 		h.asyncWorkers.Wait()
 		if h.logger != nil {
 			for _, task := range h.tasks.GetActiveTasks() {
-				h.logger.Warn("服务关闭时任务仍有未完成的清理", zap.String("runId", task.RunID), zap.String("cleanupError", task.CleanupError))
+				h.logger.Warn("Unfinished tasks at service closure", zap.String("runId", task.RunID), zap.String("cleanupError", task.CleanupError))
 			}
 		}
 	}
@@ -75,7 +75,7 @@ func taskCleanupStatus(err error) string {
 }
 func taskCleanupMessage(err error) string {
 	if errors.Is(err, runlease.ErrUnconfirmed) {
-		return "本地执行已结束，远端 MCP 停止状态待确认"
+		return "Local execution is over, remote MCP standstill pending confirmation"
 	}
-	return "任务资源清理失败，将自动重试"
+	return "The task resource cleanup failed and will be retried automatically"
 }

@@ -47,7 +47,7 @@ func TestValidRemoteURL(t *testing.T) {
 	}
 }
 
-func TestDefaultRepoIsTheOfficialRepository(t *testing.T) {
+func TestDefaultRepoIsTheMaintainedFork(t *testing.T) {
 	requireGit(t)
 	tr := newTree(t)
 
@@ -56,11 +56,11 @@ func TestDefaultRepoIsTheOfficialRepository(t *testing.T) {
 		t.Fatal(err)
 	}
 	if snap.Repo != DefaultRepoURL || snap.RepoConfigured {
-		t.Fatalf("repo = %q configured=%v, want the official default %q without configuration",
+		t.Fatalf("repo = %q configured=%v, want the maintained fork default %q without configuration",
 			snap.Repo, snap.RepoConfigured, DefaultRepoURL)
 	}
-	if DefaultRepoURL != "https://github.com/AIPentest/CyberStrikeAI.git" {
-		t.Errorf("DefaultRepoURL = %q, want the official repository", DefaultRepoURL)
+	if DefaultRepoURL != "https://github.com/adibirzu/cyberstrikeai.git" {
+		t.Errorf("DefaultRepoURL = %q, want the maintained fork", DefaultRepoURL)
 	}
 }
 
@@ -158,7 +158,7 @@ func TestInvalidRemoteURLIsAReadableStateNotAnError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("a bad configured source is a state the page can show, not a fault: %v", err)
 	}
-	if !strings.Contains(snap.CheckError, "不合法") {
+	if !strings.Contains(snap.CheckError, "Invalid update source") {
 		t.Fatalf("checkError = %q, want the illegality named", snap.CheckError)
 	}
 }

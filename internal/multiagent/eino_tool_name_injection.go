@@ -27,24 +27,24 @@ func injectToolNamesOnlyInstruction(ctx context.Context, instruction string, too
 	}
 
 	var sb strings.Builder
-	sb.WriteString("以下是当前会话绑定的工具名称索引（仅名称，无参数 JSON Schema）。\n")
-	sb.WriteString("说明：若启用了 tool_search，则列表里可能含「非常驻」工具——它们不一定出现在当前轮次下发给模型的工具定义中；在未看到该工具的完整 schema 前，禁止凭名称臆测参数。\n")
+	sb.WriteString("The following is an index of the names of the tools used for the current session binding (name only, no parameters JSON Schema).\n")
+	sb.WriteString("Annotations: If it's enabled tool_search, list may contain\"Not at all.\"Tools——They don't necessarily appear in the definition of tools for distribution to models under the current rotation.; The complete tool is not seen schema Front, Ban name-based surmising parameters.\n")
 	for _, name := range names {
 		sb.WriteString("- ")
 		sb.WriteString(name)
 		sb.WriteByte('\n')
 	}
-	sb.WriteString("\n使用规则：\n")
-	sb.WriteString("1) 上表仅为名称索引，不含参数定义。禁止猜测参数名、类型、枚举取值或是否必填。\n")
+	sb.WriteString("\nUse rules:\n")
+	sb.WriteString("1) The above table is only an index of names and does not contain a definition of parameters. It is prohibited to guess parameter names, types, enumeration values or whether they must be filled in.\n")
 	if hasToolSearch {
-		sb.WriteString("【强制 / 最高优先级】本会话已启用 tool_search（动态工具池）。凡名称索引里出现、但你在「当前请求所附 tools 定义」中看不到其完整参数 schema 的工具，一律必须先调用 tool_search；为省 token 或赶进度而跳过 tool_search、直接调用业务工具，属于明确禁止的错误流程。\n")
-		sb.WriteString("2) 默认策略：只要对目标工具的参数定义有任何不确定，就先 tool_search；宁可多一次 tool_search，也不要在未见 schema 时盲调业务工具。\n")
-		sb.WriteString("3) 调用顺序：先 tool_search（唯一必填参数 regex_pattern：按工具名匹配的正则，如子串 nuclei 或 ^exact_tool_name$）→ 在后续轮次确认目标工具已出现在 tools 列表且已阅读其 schema → 再发起对该工具的真实调用。\n")
-		sb.WriteString("4) tool_search 的返回仅为匹配到的工具名列表；schema 在解锁后的下一轮才会下发。禁止在 schema 未出现时编造 JSON 参数。\n")
-		sb.WriteString("5) 不要臆造不存在的工具名。\n\n")
+		sb.WriteString("[Force / Highest Priority]This session is enabled tool_search (Dynamic Tool Pool) .Where the name index appears, But you are.\"Annex to the current request tools Definitions\"Can not see full parameters schema Tools, You have to call first. tool_search; To Province token Or skip the schedule. tool_search, Direct call to business tools, An explicitly banned error process.\n")
+		sb.WriteString("2) Default Policy: As long as there is any uncertainty about the definition of the parameters of the target tool, Just first. tool_search; I'd rather do it again. tool_search, Not without seeing. schema Time-blind Business Tool.\n")
+		sb.WriteString("3) Call Order: First tool_search (Only Required Parameters regex_pattern: Regular by Tool Name, Like a substring nuclei or ^exact_tool_name$) → Target confirmation tool in subsequent rounds tools Listed and read schema → Then launch a real call to the tool..\n")
+		sb.WriteString("4) tool_search Returns are only a list of matching filenames; schema The next round after unlocking..Prohibited schema Make-up when not present JSON Parameters.\n")
+		sb.WriteString("5) Do not imagine a tool name that does not exist.\n\n")
 	} else {
-		sb.WriteString("2) 调用具体工具前，请先确认该工具的参数要求（以当前请求中的工具定义为准）；不确定时先澄清再调用。\n")
-		sb.WriteString("3) 不要臆造不存在的工具名。\n\n")
+		sb.WriteString("2) Before calling on specific tools, please confirm the parameters requirements for the tool (based on the definition of the tool in the current request); clarify and then call if there is uncertainty.\n")
+		sb.WriteString("3) Do not imagine a tool name that does not exist.\n\n")
 	}
 	if s := strings.TrimSpace(injectShellToolGuidance("", names)); s != "" {
 		sb.WriteString(s)
@@ -83,4 +83,3 @@ func collectToolNames(ctx context.Context, tools []tool.BaseTool) []string {
 	}
 	return out
 }
-

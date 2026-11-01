@@ -45,7 +45,7 @@ func (h *einoInitialIteratorStartHandler) emitTurnLoopTakeover() {
 	if h == nil || h.cfg.Progress == nil {
 		return
 	}
-	h.cfg.Progress("progress", "Eino TurnLoop 常驻多轮 runtime 已接管本轮会话。", map[string]interface{}{
+	h.cfg.Progress("progress", "Eino TurnLoop has taken over the current round of sessions from a permanent multi-wheel runtime.", map[string]interface{}{
 		"conversationId": h.cfg.ConversationID,
 		"source":         "eino",
 		"orchestration":  h.cfg.OrchMode,

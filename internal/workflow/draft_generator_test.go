@@ -144,7 +144,7 @@ func TestGenerateDraftFromLLMReturnsErrorOnMalformedJSON(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected malformed JSON error")
 	}
-	if !strings.Contains(err.Error(), "解析大模型工作流 JSON 失败") {
+	if !strings.Contains(err.Error(), "Failed to parse model-generated workflow JSON") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

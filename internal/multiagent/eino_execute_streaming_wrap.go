@@ -2,6 +2,7 @@ package multiagent
 
 import (
 	"context"
+	"cyberstrike-ai/internal/legacytext"
 	"errors"
 	"fmt"
 	"io"
@@ -33,7 +34,7 @@ func prependPythonUnbufferedEnv(shellCommand string) string {
 
 // einoExecuteTimeoutUserHint 与写入 ADK 工具消息（模型可见）及 SSE tool_result 尾标一致。
 func einoExecuteTimeoutUserHint() string {
-	return "已超时终止 · Timed out"
+	return "Timed out"
 }
 
 // einoExecuteRecvErrIsToolTimeout 判断 Recv 错误是否由 agent.tool_timeout_minutes 触发。
@@ -372,7 +373,7 @@ func (w *einoStreamingShellWrap) ExecuteStreaming(ctx context.Context, input *fi
 		fireBody := rawOutput
 		if !success && hasExitCode && exitCode != 0 {
 			statusLine := security.ExecuteFailureStatusLine(exitCode)
-			if !strings.Contains(rawOutput, "命令执行失败:") {
+			if !legacytext.Contains(rawOutput, "Command execution failed:") {
 				_ = sendOut(&filesystem.ExecuteResponse{Output: statusLine}, nil)
 				if w.appendPartialMonitor != nil && execID != "" {
 					w.appendPartialMonitor(execID, toolCallID, statusLine)
@@ -399,11 +400,11 @@ func einoExecuteSoftWaitTimeoutResult(executionID string, waitTimeoutSec int) st
 	if waitTimeoutSec > 0 {
 		waitText = fmt.Sprintf("%ds", waitTimeoutSec)
 	}
-	return fmt.Sprintf(`工具已提交到后台执行，当前仍在运行。
+	return fmt.Sprintf(`The tool is running in the background.
 
 execution_id: %s
 status: running
 wait_timeout: %s
 
-你可以继续推理、改用其他工具，或调用 get_tool_execution / wait_tool_execution 读取 partial_output 并继续等待；也可以调用 cancel_tool_execution 取消。`, executionID, waitText)
+Continue other work or use get_tool_execution / wait_tool_execution to read partial_output and wait again. Use cancel_tool_execution to request cancellation.`, executionID, waitText)
 }

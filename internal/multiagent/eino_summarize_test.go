@@ -425,7 +425,7 @@ func TestEinoSummarizationMiddlewareRetriesWhenSummaryModelReturnsEmpty(t *testi
 		t.Fatalf("summary model calls=%d, want retry after empty output", summaryModel.calls)
 	}
 	joined := joinClassicMessageContent(after.Messages)
-	for _, want := range []string{"有效摘要", "继续验证 SQL 注入路径", "原始用户输入与约束账本"} {
+	for _, want := range []string{"有效摘要", "继续验证 SQL 注入路径", "Original user input and constraints ledger"} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("retried compacted context missing %q:\n%s", want, joined)
 		}
@@ -548,7 +548,7 @@ func TestSanitizeSystemContentForTranscript_BestPractice(t *testing.T) {
 	}, "\n")
 
 	out := sanitizeSystemContentForTranscript(system)
-	if strings.Contains(out, "以下是当前会话绑定的工具名称索引") {
+	if strings.Contains(out, "Below is the index of the current session bound by the title of the tool") {
 		t.Fatalf("tool index should be stripped: %q", out)
 	}
 	if strings.Contains(out, "- nmap") || strings.Contains(out, "高强度扫描要求") {

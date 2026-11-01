@@ -15,18 +15,18 @@ const ProtocolVersion = "2024-11-05"
 
 // Message MCP消息
 type Message struct {
-	ID      interface{}       `json:"id,omitempty"`
-	Method  string            `json:"method,omitempty"`
-	Params  json.RawMessage   `json:"params,omitempty"`
-	Result  json.RawMessage   `json:"result,omitempty"`
-	Error   *Error            `json:"error,omitempty"`
-	Version string            `json:"jsonrpc,omitempty"`
+	ID      interface{}     `json:"id,omitempty"`
+	Method  string          `json:"method,omitempty"`
+	Params  json.RawMessage `json:"params,omitempty"`
+	Result  json.RawMessage `json:"result,omitempty"`
+	Error   *Error          `json:"error,omitempty"`
+	Version string          `json:"jsonrpc,omitempty"`
 }
 
 // Error MCP错误
 type Error struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
 	Data    interface{} `json:"data,omitempty"`
 }
 
@@ -45,9 +45,9 @@ type ClientInfo struct {
 
 // InitializeResponse 初始化响应
 type InitializeResponse struct {
-	ProtocolVersion string                 `json:"protocolVersion"`
-	Capabilities    ServerCapabilities     `json:"capabilities"`
-	ServerInfo      ServerInfo             `json:"serverInfo"`
+	ProtocolVersion string             `json:"protocolVersion"`
+	Capabilities    ServerCapabilities `json:"capabilities"`
+	ServerInfo      ServerInfo         `json:"serverInfo"`
 }
 
 // ServerCapabilities 服务器能力
@@ -134,7 +134,7 @@ func (s *SSEServer) handleSSE(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "event: message\ndata: {\"type\":\"ready\",\"status\":\"ok\"}\n\n")
 	flusher.Flush()
 
-	log.Printf("SSE客户端连接: %s", clientID)
+	log.Printf("SSE client connection: %s", clientID)
 
 	// 心跳
 	ticker := time.NewTicker(15 * time.Second)
@@ -143,7 +143,7 @@ func (s *SSEServer) handleSSE(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case <-r.Context().Done():
-			log.Printf("SSE客户端断开: %s", clientID)
+			log.Printf("SSE client disconnect: %s", clientID)
 			return
 		case msg, ok := <-clientChan:
 			if !ok {
@@ -172,7 +172,7 @@ func (s *SSEServer) handleMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("收到请求: method=%s, id=%v", msg.Method, msg.ID)
+	log.Printf("Request received: method=%s, id=%v", msg.Method, msg.ID)
 
 	// 处理消息
 	response := s.processMessage(&msg)
@@ -235,7 +235,7 @@ func (s *SSEServer) handleInitialize(msg *Message) *Message {
 		}
 	}
 
-	log.Printf("初始化请求: client=%s, version=%s", req.ClientInfo.Name, req.ClientInfo.Version)
+	log.Printf("Initialization request: client=%s, version=%s", req.ClientInfo.Name, req.ClientInfo.Version)
 
 	response := InitializeResponse{
 		ProtocolVersion: ProtocolVersion,
@@ -263,13 +263,13 @@ func (s *SSEServer) handleListTools(msg *Message) *Message {
 	tools := []Tool{
 		{
 			Name:        "test_echo",
-			Description: "回显输入的文本，用于测试SSE MCP服务器",
+			Description: "Resume the text entered to test the SSE MCP server",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
 					"text": map[string]interface{}{
 						"type":        "string",
-						"description": "要回显的文本",
+						"description": "Text to echo",
 					},
 				},
 				"required": []string{"text"},
@@ -277,17 +277,17 @@ func (s *SSEServer) handleListTools(msg *Message) *Message {
 		},
 		{
 			Name:        "test_add",
-			Description: "计算两个数字的和，用于测试SSE MCP服务器",
+			Description: "Calculates the sum of two numbers for testing the SSE MCP server",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
 					"a": map[string]interface{}{
 						"type":        "number",
-						"description": "第一个数字",
+						"description": "First number",
 					},
 					"b": map[string]interface{}{
 						"type":        "number",
-						"description": "第二个数字",
+						"description": "Number two.",
 					},
 				},
 				"required": []string{"a", "b"},
@@ -318,7 +318,7 @@ func (s *SSEServer) handleCallTool(msg *Message) *Message {
 		}
 	}
 
-	log.Printf("调用工具: name=%s, args=%v", req.Name, req.Arguments)
+	log.Printf("Caller: name=%s, args=%v", req.Name, req.Arguments)
 
 	var content []Content
 
@@ -328,7 +328,7 @@ func (s *SSEServer) handleCallTool(msg *Message) *Message {
 		content = []Content{
 			{
 				Type: "text",
-				Text: fmt.Sprintf("回显: %s", text),
+				Text: fmt.Sprintf("Echo: %s", text),
 			},
 		}
 	case "test_add":
@@ -377,10 +377,10 @@ func main() {
 	http.HandleFunc("/message", server.handleMessage)
 
 	port := ":8082"
-	log.Printf("SSE MCP测试服务器启动在端口 %s", port)
-	log.Printf("SSE端点: http://localhost%s/sse", port)
-	log.Printf("消息端点: http://localhost%s/message", port)
-	log.Printf("配置示例:")
+	log.Printf("SSE MCP test server started at port %s", port)
+	log.Printf("SSE endpoint: http://localhost%s/sse", port)
+	log.Printf("Message peer: http://localhost%s/message", port)
+	log.Printf("Configure Example:")
 	log.Printf(`{
   "test-sse-mcp": {
     "transport": "sse",
@@ -392,4 +392,3 @@ func main() {
 		log.Fatal(err)
 	}
 }
-

@@ -22,8 +22,8 @@ error() { echo -e "${RED}❌ $1${NC}"; }
 note() { echo -e "${CYAN}ℹ️  $1${NC}"; }
 
 # Temporary mirror/proxy settings (only effective in this script)
-PIP_INDEX_URL="${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}"
-GOPROXY="${GOPROXY:-https://goproxy.cn,direct}"
+PIP_INDEX_URL="${PIP_INDEX_URL:-https://pypi.org/simple}"
+GOPROXY="${GOPROXY:-https://proxy.golang.org,direct}"
 
 # Save original env vars (for restoration)
 ORIGINAL_PIP_INDEX_URL="${PIP_INDEX_URL:-}"
@@ -35,13 +35,13 @@ show_progress() {
     local message=$2
     local i=0
     local dots=""
-    
+
     # Check if the process exists
     if ! kill -0 "$pid" 2>/dev/null; then
         # Process already finished; return immediately
         return 0
     fi
-    
+
     while kill -0 "$pid" 2>/dev/null; do
         i=$((i + 1))
         case $((i % 4)) in
@@ -52,7 +52,7 @@ show_progress() {
         esac
         printf "\r${BLUE}⏳ %s%s${NC}" "$message" "$dots"
         sleep 0.5
-        
+
         # Re-check whether the process is still running
         if ! kill -0 "$pid" 2>/dev/null; then
             break
@@ -103,17 +103,30 @@ check_python() {
         echo "  CentOS:  sudo yum install python3 python3-pip"
         exit 1
     fi
-    
+
     PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
     PYTHON_MAJOR=$(echo "$PYTHON_VERSION" | cut -d. -f1)
     PYTHON_MINOR=$(echo "$PYTHON_VERSION" | cut -d. -f2)
-    
+
     if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 10 ]); then
         error "Python version too old: $PYTHON_VERSION (requires 3.10+)"
         exit 1
     fi
-    
+
     success "Python check passed: $PYTHON_VERSION"
+}
+
+# The source module declares the minimum patched toolchain.
+REQUIRED_GO_VERSION="$(awk '$1 == "go" {print $2; exit}' go.mod)"
+go_version_supported() {
+    awk -v current="$1" -v required="$REQUIRED_GO_VERSION" 'BEGIN {
+        split(current, have, "."); split(required, need, ".")
+        for (i = 1; i <= 3; i++) {
+            if (have[i]+0 < need[i]+0) exit 1
+            if (have[i]+0 > need[i]+0) exit 0
+        }
+        exit 0
+    }'
 }
 
 # Check Go environment
@@ -121,23 +134,23 @@ check_go() {
     if ! command -v go >/dev/null 2>&1; then
         error "Go not found"
         echo ""
-        info "Install Go 1.21 or later first:"
+        info "Install Go ${REQUIRED_GO_VERSION} or later first (the pinned source minimum):"
         echo "  macOS:   brew install go"
         echo "  Ubuntu:  sudo apt-get install golang-go"
         echo "  CentOS:  sudo yum install golang"
         echo "  Or visit: https://go.dev/dl/"
         exit 1
     fi
-    
+
     GO_VERSION=$(go version | awk '{print $3}' | sed 's/go//')
     GO_MAJOR=$(echo "$GO_VERSION" | cut -d. -f1)
     GO_MINOR=$(echo "$GO_VERSION" | cut -d. -f2)
-    
-    if [ "$GO_MAJOR" -lt 1 ] || ([ "$GO_MAJOR" -eq 1 ] && [ "$GO_MINOR" -lt 21 ]); then
-        error "Go version too old: $GO_VERSION (requires 1.21+)"
+
+    if ! go_version_supported "$GO_VERSION"; then
+        error "Go version too old: $GO_VERSION (requires ${REQUIRED_GO_VERSION}+)"
         exit 1
     fi
-    
+
     success "Go check passed: $(go version)"
 }
 
@@ -145,7 +158,7 @@ check_go_quiet() {
     if ! command -v go >/dev/null 2>&1; then
         error "Go not found"
         echo ""
-        info "Install Go 1.21 or later first:"
+        info "Install Go ${REQUIRED_GO_VERSION} or later first (the pinned source minimum):"
         echo "  macOS:   brew install go"
         echo "  Ubuntu:  sudo apt-get install golang-go"
         echo "  CentOS:  sudo yum install golang"
@@ -157,8 +170,8 @@ check_go_quiet() {
     GO_MAJOR=$(echo "$GO_VERSION" | cut -d. -f1)
     GO_MINOR=$(echo "$GO_VERSION" | cut -d. -f2)
 
-    if [ "$GO_MAJOR" -lt 1 ] || ([ "$GO_MAJOR" -eq 1 ] && [ "$GO_MINOR" -lt 21 ]); then
-        error "Go version too old: $GO_VERSION (requires 1.21+)"
+    if ! go_version_supported "$GO_VERSION"; then
+        error "Go version too old: $GO_VERSION (requires ${REQUIRED_GO_VERSION}+)"
         exit 1
     fi
 }
@@ -172,11 +185,11 @@ setup_python_env() {
     else
         info "Python virtual environment already exists"
     fi
-    
+
     info "Activating virtual environment..."
     # shellcheck disable=SC1091
     source "$VENV_DIR/bin/activate"
-    
+
     if [ -f "$REQUIREMENTS_FILE" ]; then
         echo ""
         note "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -185,13 +198,13 @@ setup_python_env() {
         note "   For a permanent setting, set the PIP_INDEX_URL env var"
         note "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo ""
-        
+
         info "Upgrading pip..."
         pip install --index-url "$PIP_INDEX_URL" --upgrade pip >/dev/null 2>&1 || true
-        
+
         info "Installing Python dependencies..."
         echo ""
-        
+
         # Install deps in background; capture errors and show progress
         PIP_LOG=$(mktemp)
         (
@@ -200,10 +213,10 @@ setup_python_env() {
             echo $? > "${PIP_LOG}.exit"
         ) &
         PIP_PID=$!
-        
+
         # Brief pause so the process can start
         sleep 0.1
-        
+
         # Show progress while still running
         if kill -0 "$PIP_PID" 2>/dev/null; then
             show_progress "$PIP_PID" "Installing dependencies"
@@ -211,10 +224,10 @@ setup_python_env() {
             # Process already finished; wait for exit code file
             sleep 0.2
         fi
-        
+
         # Wait for completion; ignore wait exit code
         wait "$PIP_PID" 2>/dev/null || true
-        
+
         PIP_EXIT_CODE=0
         if [ -f "${PIP_LOG}.exit" ]; then
             PIP_EXIT_CODE=$(cat "${PIP_LOG}.exit" 2>/dev/null || echo "1")
@@ -225,7 +238,7 @@ setup_python_env() {
                 PIP_EXIT_CODE=1
             fi
         fi
-        
+
         if [ $PIP_EXIT_CODE -eq 0 ]; then
             success "Python dependencies installed"
         else
@@ -265,7 +278,7 @@ build_go_project() {
     note "   For a permanent setting, set the GOPROXY env var"
     note "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    
+
     info "Downloading Go dependencies..."
     GO_DOWNLOAD_LOG=$(mktemp)
     (
@@ -275,10 +288,10 @@ build_go_project() {
         echo $? > "${GO_DOWNLOAD_LOG}.exit"
     ) &
     GO_DOWNLOAD_PID=$!
-    
+
     # Brief pause so the process can start
     sleep 0.1
-    
+
     # Show progress while still running
     if kill -0 "$GO_DOWNLOAD_PID" 2>/dev/null; then
         show_progress "$GO_DOWNLOAD_PID" "Downloading Go dependencies"
@@ -286,10 +299,10 @@ build_go_project() {
         # Process already finished; wait for exit code file
         sleep 0.2
     fi
-    
+
     # Wait for completion; ignore wait exit code
     wait "$GO_DOWNLOAD_PID" 2>/dev/null || true
-    
+
     GO_DOWNLOAD_EXIT_CODE=0
     if [ -f "${GO_DOWNLOAD_LOG}.exit" ]; then
         GO_DOWNLOAD_EXIT_CODE=$(cat "${GO_DOWNLOAD_LOG}.exit" 2>/dev/null || echo "1")
@@ -301,13 +314,13 @@ build_go_project() {
         fi
     fi
     rm -f "$GO_DOWNLOAD_LOG" 2>/dev/null || true
-    
+
     if [ $GO_DOWNLOAD_EXIT_CODE -ne 0 ]; then
         error "Go dependency download failed"
         exit 1
     fi
     success "Go dependencies downloaded"
-    
+
     info "Building project..."
     GO_BUILD_LOG=$(mktemp)
     (
@@ -317,10 +330,10 @@ build_go_project() {
         echo $? > "${GO_BUILD_LOG}.exit"
     ) &
     GO_BUILD_PID=$!
-    
+
     # Brief pause so the process can start
     sleep 0.1
-    
+
     # Show progress while still running
     if kill -0 "$GO_BUILD_PID" 2>/dev/null; then
         show_progress "$GO_BUILD_PID" "Building project"
@@ -328,10 +341,10 @@ build_go_project() {
         # Process already finished; wait for exit code file
         sleep 0.2
     fi
-    
+
     # Wait for completion; ignore wait exit code
     wait "$GO_BUILD_PID" 2>/dev/null || true
-    
+
     GO_BUILD_EXIT_CODE=0
     if [ -f "${GO_BUILD_LOG}.exit" ]; then
         GO_BUILD_EXIT_CODE=$(cat "${GO_BUILD_LOG}.exit" 2>/dev/null || echo "1")
@@ -342,7 +355,7 @@ build_go_project() {
             GO_BUILD_EXIT_CODE=1
         fi
     fi
-    
+
     if [ $GO_BUILD_EXIT_CODE -eq 0 ]; then
         success "Build complete: $BINARY_NAME"
         rm -f "$GO_BUILD_LOG"
@@ -391,14 +404,14 @@ need_rebuild() {
     if [ ! -f "$BINARY_NAME" ]; then
         return 0  # needs build
     fi
-    
+
     # Check if source changed since last build
     if [ "$BINARY_NAME" -ot cmd/server/main.go ] || \
        [ "$BINARY_NAME" -ot go.mod ] || \
        find internal cmd -name "*.go" -newer "$BINARY_NAME" 2>/dev/null | grep -q .; then
         return 0  # needs rebuild
     fi
-    
+
     return 1  # no rebuild needed
 }
 
@@ -454,12 +467,12 @@ main() {
     fi
     check_go
     echo ""
-    
+
     # Python setup
     info "Setting up Python environment..."
     setup_python_env
     echo ""
-    
+
     # Go build
     if need_rebuild; then
         info "Preparing to build project..."
@@ -468,7 +481,7 @@ main() {
         success "Binary is up to date; skipping build"
     fi
     echo ""
-    
+
     # Start server
     success "All setup complete!"
     echo ""

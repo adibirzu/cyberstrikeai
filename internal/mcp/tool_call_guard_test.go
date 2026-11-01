@@ -22,7 +22,7 @@ func testToolGuard(t *testing.T, enabled bool) *toolguard.Manager {
 		t.Fatal(err)
 	}
 	if err := guard.Update(toolguard.Config{Enabled: enabled, Rules: []toolguard.Rule{{
-		ID: "government", Name: "政府网站保护", Enabled: true,
+		ID: "government", Name: "Government website protection", Enabled: true,
 		Pattern: `(?i)[a-z0-9.-]+\.gov(?:\.[a-z0-9.-]+)?`,
 		Message: "识别到 {match}，禁止攻击政府网站，请检查目标授权。",
 	}}}); err != nil {

@@ -44,7 +44,7 @@ UPGRADE_TMP_DIR=""
 
 # Built-in fallback, used ONLY when this directory is not a git work tree and neither
 # --repo nor GITHUB_REPO was given. See resolve_repo().
-DEFAULT_GITHUB_REPO="AIPentest/CyberStrikeAI"
+DEFAULT_GITHUB_REPO="adibirzu/cyberstrikeai"
 GITHUB_REPO="${GITHUB_REPO:-}"
 REPO_ARG=""
 

@@ -38,7 +38,7 @@ function harness(options = {}) {
         execCommand: () => { copied.push(body.children.find(child => child.tagName === 'textarea').value); return options.copyWorks !== false; }
     };
     let language = 'zh-CN';
-    const dictionaries = Object.fromEntries(['zh-CN', 'en-US', 'ru-RU'].map(lang => [lang, JSON.parse(fs.readFileSync(`web/static/i18n/${lang}.json`, 'utf8'))]));
+    const dictionaries = Object.fromEntries(['zh-CN', 'en-US', 'ru-RU'].map(lang => [lang, JSON.parse(fs.readFileSync((lang === 'zh-CN' ? 'maintenance/vendor-locales/zh-CN.json' : `web/static/i18n/${lang}.json`), 'utf8'))]));
     const window = {
         t(key, values) {
             let translated = key.split('.').reduce((value, part) => value && value[part], dictionaries[language]) || key;

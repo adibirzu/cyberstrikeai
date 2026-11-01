@@ -57,14 +57,12 @@ func BuildWorkspaceBlock(absPath string) string {
 	if absPath == "" {
 		return ""
 	}
-	return fmt.Sprintf(`## 会话工作目录（下载与本地分析）
-
-**必须使用以下目录**保存 curl/wget 下载的文件、临时 HTML/JS，以及 read_file/glob/grep 的检索范围：
+	return fmt.Sprintf(`## Session Working Directory (downloads and local analysis)
+Save downloaded files and analysis artifacts under:
 `+"`%s`"+`
-
-- 此目录在绑定项目时由同项目会话共享，重启或重新打开对话后仍应先检索已有成果。成功脚本及依赖保存在 `+"`artifacts/`"+` 下，并用 `+"`upsert_project_fact(category=note, fact_key=artifact/<名称>)`"+` 登记相对路径、调用方式和验证证据。
-- **禁止**使用系统 `+"`/tmp`"+` 或其它全局临时目录（多项目/多会话会互窜遗留文件）。
-- 下载示例：`+"`curl -o '%s/page.html' 'https://target/'`"+`；exec 时可将 `+"`workdir`"+` 设为该目录。
-- 读取下载产物或临时分析文件前，用 glob/grep/read_file **限定在该目录**下搜索，勿在 `+"`/tmp`"+` 盲目检索。
-- 当用户询问“当前目录”“项目根目录”或应用自身文件时，优先按服务进程当前工作目录理解；不要把空的会话工作目录误当成项目根目录。`, absPath, absPath)
+- This project/session workspace survives conversation restarts. Save verified reusable scripts in artifacts/ and register their relative paths, usage and evidence with upsert_project_fact(category=note, fact_key=artifact/<name>).
+- Do not use shared /tmp or other global temporary directories; concurrent projects/sessions may collide.
+- Example: curl -o '%s/page.html' 'https://target/'; set exec workdir to this directory.
+- Limit glob/grep/read_file searches for downloaded artifacts to this workspace.
+- When the user refers to their current directory or existing local files, check the service process working directory. An empty session workspace is not the project root.`, absPath, absPath)
 }

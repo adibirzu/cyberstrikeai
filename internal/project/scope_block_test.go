@@ -9,8 +9,8 @@ import (
 
 func TestBuildScopeBlock_targetsExcludeNotes(t *testing.T) {
 	proj := &database.Project{
-		ID:   "p1",
-		Name: "Acme",
+		ID:        "p1",
+		Name:      "Acme",
 		ScopeJSON: `{"targets":["https://app.example.com"],"exclude":["*.cdn.example.com"],"notes":"仅 Web 层"}`,
 	}
 	block := BuildScopeBlock(proj)
@@ -34,7 +34,7 @@ func TestBuildScopeBlock_empty(t *testing.T) {
 func TestBuildScopeBlock_invalidJSON(t *testing.T) {
 	proj := &database.Project{Name: "X", ScopeJSON: `{not json`}
 	block := BuildScopeBlock(proj)
-	if !strings.Contains(block, "非合法 JSON") {
+	if !strings.Contains(block, "invalid JSON") {
 		t.Fatalf("unexpected: %s", block)
 	}
 }

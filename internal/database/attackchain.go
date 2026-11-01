@@ -40,14 +40,14 @@ func (db *DB) SaveAttackChainNode(conversationID, nodeID, nodeType, nodeName, to
 	}
 
 	query := `
-		INSERT OR REPLACE INTO attack_chain_nodes 
+		INSERT OR REPLACE INTO attack_chain_nodes
 		(id, conversation_id, node_type, node_name, tool_execution_id, metadata, risk_score, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 	`
 
 	_, err := db.Exec(query, nodeID, conversationID, nodeType, nodeName, toolExecID, metadataJSON, riskScore)
 	if err != nil {
-		db.logger.Error("保存攻击链节点失败", zap.Error(err), zap.String("nodeId", nodeID))
+		db.logger.Error("Failed to save attack chain node", zap.Error(err), zap.String("nodeId", nodeID))
 		return err
 	}
 
@@ -57,14 +57,14 @@ func (db *DB) SaveAttackChainNode(conversationID, nodeID, nodeType, nodeName, to
 // SaveAttackChainEdge 保存攻击链边
 func (db *DB) SaveAttackChainEdge(conversationID, edgeID, sourceNodeID, targetNodeID, edgeType string, weight int) error {
 	query := `
-		INSERT OR REPLACE INTO attack_chain_edges 
+		INSERT OR REPLACE INTO attack_chain_edges
 		(id, conversation_id, source_node_id, target_node_id, edge_type, weight, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 	`
 
 	_, err := db.Exec(query, edgeID, conversationID, sourceNodeID, targetNodeID, edgeType, weight)
 	if err != nil {
-		db.logger.Error("保存攻击链边失败", zap.Error(err), zap.String("edgeId", edgeID))
+		db.logger.Error("Failed to save the attack chain", zap.Error(err), zap.String("edgeId", edgeID))
 		return err
 	}
 
@@ -82,7 +82,7 @@ func (db *DB) LoadAttackChainNodes(conversationID string) ([]AttackChainNode, er
 
 	rows, err := db.Query(query, conversationID)
 	if err != nil {
-		return nil, fmt.Errorf("查询攻击链节点失败: %w", err)
+		return nil, fmt.Errorf("Failed to query attack node: %w", err)
 	}
 	defer rows.Close()
 
@@ -94,7 +94,7 @@ func (db *DB) LoadAttackChainNodes(conversationID string) ([]AttackChainNode, er
 
 		err := rows.Scan(&node.ID, &node.Type, &node.Label, &toolExecID, &metadataJSON, &node.RiskScore)
 		if err != nil {
-			db.logger.Warn("扫描攻击链节点失败", zap.Error(err))
+			db.logger.Warn("Failed to scan the attack chain node", zap.Error(err))
 			continue
 		}
 
@@ -104,7 +104,7 @@ func (db *DB) LoadAttackChainNodes(conversationID string) ([]AttackChainNode, er
 
 		if metadataJSON.Valid && metadataJSON.String != "" {
 			if err := json.Unmarshal([]byte(metadataJSON.String), &node.Metadata); err != nil {
-				db.logger.Warn("解析节点元数据失败", zap.Error(err))
+				db.logger.Warn("Failed to parse node metadata", zap.Error(err))
 				node.Metadata = make(map[string]interface{})
 			}
 		} else {
@@ -128,7 +128,7 @@ func (db *DB) LoadAttackChainEdges(conversationID string) ([]AttackChainEdge, er
 
 	rows, err := db.Query(query, conversationID)
 	if err != nil {
-		return nil, fmt.Errorf("查询攻击链边失败: %w", err)
+		return nil, fmt.Errorf("Failed to query attack chain: %w", err)
 	}
 	defer rows.Close()
 
@@ -138,7 +138,7 @@ func (db *DB) LoadAttackChainEdges(conversationID string) ([]AttackChainEdge, er
 
 		err := rows.Scan(&edge.ID, &edge.Source, &edge.Target, &edge.Type, &edge.Weight)
 		if err != nil {
-			db.logger.Warn("扫描攻击链边失败", zap.Error(err))
+			db.logger.Warn("Failed to scan the attack chain.", zap.Error(err))
 			continue
 		}
 
@@ -153,13 +153,13 @@ func (db *DB) DeleteAttackChain(conversationID string) error {
 	// 先删除边（因为有外键约束）
 	_, err := db.Exec("DELETE FROM attack_chain_edges WHERE conversation_id = ?", conversationID)
 	if err != nil {
-		db.logger.Warn("删除攻击链边失败", zap.Error(err))
+		db.logger.Warn("Failed to delete attack chain", zap.Error(err))
 	}
 
 	// 再删除节点
 	_, err = db.Exec("DELETE FROM attack_chain_nodes WHERE conversation_id = ?", conversationID)
 	if err != nil {
-		db.logger.Error("删除攻击链节点失败", zap.Error(err), zap.String("conversationId", conversationID))
+		db.logger.Error("Failed to delete attack chain node", zap.Error(err), zap.String("conversationId", conversationID))
 		return err
 	}
 

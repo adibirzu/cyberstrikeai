@@ -91,14 +91,14 @@
             }
         }
         if (!name || name === idStr || c2LooksLikeUuid(name)) {
-            return c2t('batchManageModal.unknownProject') || '未知项目';
+            return c2t('batchManageModal.unknownProject') || 'Unknown project';
         }
         return name;
     }
 
     function c2ProjectOptionsHtml(selectedId, projectList) {
         const selected = String(selectedId || '').trim();
-        let html = `<option value="">${escapeHtml(c2t('assets.unboundProject') || '暂不绑定')}</option>`;
+        let html = `<option value="">${escapeHtml(c2t('assets.unboundProject') || 'Not bound')}</option>`;
         let entries = [];
         if (Array.isArray(projectList) && projectList.length) {
             entries = projectList
@@ -147,7 +147,7 @@
     }
 
     function c2ProjectBindSelectHtml(listener) {
-        return `<select class="c2-project-bind-select" data-id="${escapeAttr(listener.id || '')}" title="${escapeAttr(c2t('assets.project') || '所属项目')}" onclick="event.stopPropagation()" onchange="C2.bindListenerProject(this.dataset.id, this.value)">${c2ProjectOptionsHtml(c2ResourceProjectId(listener))}</select>`;
+        return `<select class="c2-project-bind-select" data-id="${escapeAttr(listener.id || '')}" title="${escapeAttr(c2t('assets.project') || 'Project')}" onclick="event.stopPropagation()" onchange="C2.bindListenerProject(this.dataset.id, this.value)">${c2ProjectOptionsHtml(c2ResourceProjectId(listener))}</select>`;
     }
 
     function withC2ProjectQuery(url) {
@@ -823,7 +823,7 @@
 
     C2.init = function() {
         const pageId = window.currentPageId || '';
-        
+
         if (pageId.startsWith('c2')) {
             C2.connectEventStream();
         }
@@ -932,7 +932,7 @@
                 ? '<div class="c2-listener-kv"><span class="c2-listener-kv-label">' + escapeHtml(c2t('c2.listeners.callbackShort')) + '</span><span class="c2-listener-kv-val c2-listener-mono">' + escapeHtml(cb) + '</span></div>'
                 : '';
             const remarkRow = l.remark ? '<div class="c2-listener-remark">' + escapeHtml(l.remark) + '</div>' : '';
-            const projectRow = '<div class="c2-listener-kv"><span class="c2-listener-kv-label">' + escapeHtml(c2t('assets.project') || '所属项目') + '</span><span class="c2-listener-kv-val">' + c2ProjectBindSelectHtml(l) + '</span></div>';
+            const projectRow = '<div class="c2-listener-kv"><span class="c2-listener-kv-label">' + escapeHtml(c2t('assets.project') || 'Project') + '</span><span class="c2-listener-kv-val">' + c2ProjectBindSelectHtml(l) + '</span></div>';
             const startedHtml = formatListenerStartedHtml(l.startedAt);
             const pillLabel = escapeHtml(listenerCardStatusPillLabel(st));
             const typeMark = escapeHtml(listenerTypeShortLabel(l.type));
@@ -1049,7 +1049,7 @@
                     </div>
                 </div>
                 <div class="c2-form-group">
-                    <label>${escapeHtml(c2t('assets.project') || '所属项目')}</label>
+                    <label>${escapeHtml(c2t('assets.project') || 'Project')}</label>
                     <select id="c2-listener-project-id" class="form-control c2-form-select-native">${projectOpts}</select>
                 </div>
                 <div class="c2-form-row">
@@ -1229,10 +1229,10 @@
                 C2.renderListeners();
                 return;
             }
-            showToast(c2t('projects.projectBound') || '已绑定项目', 'success');
+            showToast(c2t('projects.projectBound') || 'Project bound', 'success');
             C2.loadListeners();
         }).catch(err => {
-            showToast(err && err.message ? err.message : '绑定项目失败', 'error');
+            showToast(err && err.message ? err.message : 'Failed to update project binding', 'error');
             C2.renderListeners();
         });
     };
@@ -1287,7 +1287,7 @@
                     <input type="text" id="c2-listener-name" class="form-control" value="${escapeAttr(l.name)}">
                 </div>
                 <div class="c2-form-group">
-                    <label>${escapeHtml(c2t('assets.project') || '所属项目')}</label>
+                    <label>${escapeHtml(c2t('assets.project') || 'Project')}</label>
                     <select id="c2-listener-project-id" class="form-control c2-form-select-native">${projectOpts}</select>
                 </div>
                 <div class="c2-form-row">
@@ -1545,7 +1545,7 @@
             const userEmpty = isEmptyInfoValue(s.username);
             const osEmpty = isEmptyInfoValue(s.os) && isEmptyInfoValue(s.arch);
             return `
-            <div class="c2-session-item ${s.id === C2.selectedSessionId ? 'active' : ''}" 
+            <div class="c2-session-item ${s.id === C2.selectedSessionId ? 'active' : ''}"
                  data-status="${escapeAttr(s.status || '')}"
                  data-c2-action="session-select"
                  data-c2-id="${escapeAttr(s.id)}"
@@ -1646,14 +1646,14 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="c2-session-tabs c2-session-tabs--pills">
                     <button type="button" class="c2-session-tab${tabCls('terminal')}" data-tab="terminal" onclick="C2.switchTab('terminal')">${escapeHtml(c2t('c2.sessions.terminal'))}</button>
                     <button type="button" class="c2-session-tab${tabCls('files')}" data-tab="files" onclick="C2.switchTab('files')">${escapeHtml(c2t('c2.sessions.files'))}</button>
                     <button type="button" class="c2-session-tab${tabCls('tasks')}" data-tab="tasks" onclick="C2.switchTab('tasks')">${escapeHtml(c2t('c2.sessions.tasks'))}</button>
                     <button type="button" class="c2-session-tab${tabCls('info')}" data-tab="info" onclick="C2.switchTab('info')">${escapeHtml(c2t('c2.sessions.info'))}</button>
                 </div>
-                
+
                 <div class="c2-session-tab-content">
                     <div id="c2-tab-terminal" class="c2-tab-panel${panelCls('terminal')}" style="${panelDisplay('terminal')}">
                         <div id="c2-terminal-container" class="c2-terminal-container"></div>
@@ -2803,7 +2803,7 @@
 
         const container = document.getElementById('c2-file-list');
         const breadcrumb = document.getElementById('c2-current-path');
-        
+
         if (container) container.innerHTML = '<div class="c2-loading">' + escapeHtml(c2t('c2.files.loading')) + '</div>';
 
         apiRequest('POST', `${API_BASE}/tasks`, {
@@ -3451,7 +3451,7 @@
             if (typeof data.pending_queued_count === 'number') {
                 C2.tasksPendingQueuedCount = data.pending_queued_count;
             }
-            
+
             if (!container) return;
 
             const refreshBtn = escapeHtml(c2t('c2.tasks.refresh'));
@@ -3474,7 +3474,7 @@
                     </div>`;
                 return;
             }
-            
+
             container.innerHTML = `
                 <div class="c2-session-tasks-panel">
                     <div class="c2-session-tasks-toolbar">
@@ -4404,10 +4404,10 @@
         const msg = String(event.message || '');
         const sid = event.sessionId || (event.data && event.data.session_id) || '';
         const sessionOnline = event.category === 'session' && event.level === 'critical' && (
-            msg.includes('上线') || msg.includes('新会话') || /new session/i.test(msg)
+            msg.includes('Online.') || msg.includes('New Session') || /new session/i.test(msg)
         );
         const sessionOffline = event.category === 'session' && (
-            msg.includes('离线') || /offline/i.test(msg)
+            msg.includes('Dead') || /offline/i.test(msg)
         );
 
         if (sessionOnline || sessionOffline) {
@@ -4440,7 +4440,7 @@
         if (event.category === 'task') {
             const taskSid = sid;
             if (window.currentPageId === 'c2-tasks') {
-                const page = msg.includes('入队') ? 1 : (C2.tasksPage || 1);
+                const page = msg.includes('Get in the line.') ? 1 : (C2.tasksPage || 1);
                 C2.loadTasks(page);
             }
             if (window.currentPageId === 'c2-sessions' && taskSid && C2.selectedSessionId === taskSid) {

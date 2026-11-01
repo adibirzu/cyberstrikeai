@@ -459,7 +459,7 @@ func (h *WebShellHandler) CreateConnection(c *gin.Context) {
 		if u, err := url.Parse(req.URL); err == nil {
 			host = u.Host
 		}
-		h.audit.RecordOK(c, "webshell", "connection_create", "创建 WebShell 连接", "webshell_connection", conn.ID, map[string]interface{}{
+		h.audit.RecordOK(c, "webshell", "connection_create", "WebShell connection created", "webshell_connection", conn.ID, map[string]interface{}{
 			"host": host, "type": shellType,
 		})
 	}
@@ -508,7 +508,7 @@ func (h *WebShellHandler) UpdateConnection(c *gin.Context) {
 	if password == maskedSecret {
 		stored, ok := h.authorizedWebshellConnection(c, id, "")
 		if !ok {
-			c.JSON(http.StatusForbidden, gin.H{"error": "无权访问该连接"})
+			c.JSON(http.StatusForbidden, gin.H{"error": "No access to the connection"})
 			return
 		}
 		password = stored.Password
@@ -561,7 +561,7 @@ func (h *WebShellHandler) DeleteConnection(c *gin.Context) {
 		return
 	}
 	if h.audit != nil {
-		h.audit.RecordOK(c, "webshell", "connection_delete", "删除 WebShell 连接", "webshell_connection", id, nil)
+		h.audit.RecordOK(c, "webshell", "connection_delete", "Delete WebShell connections", "webshell_connection", id, nil)
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
@@ -658,7 +658,7 @@ func (h *WebShellHandler) GetAIHistory(c *gin.Context) {
 	}
 	conv, err := h.db.GetConversationByWebshellConnectionID(id)
 	if err != nil {
-		h.logger.Warn("获取 WebShell AI 对话失败", zap.String("connectionId", id), zap.Error(err))
+		h.logger.Warn("Failed to get WebShell AI dialogue", zap.String("connectionId", id), zap.Error(err))
 		c.JSON(http.StatusOK, gin.H{"conversationId": nil, "messages": []database.Message{}})
 		return
 	}
@@ -682,7 +682,7 @@ func (h *WebShellHandler) ListAIConversations(c *gin.Context) {
 	}
 	list, err := h.db.ListConversationsByWebshellConnectionID(id)
 	if err != nil {
-		h.logger.Warn("列出 WebShell AI 对话失败", zap.String("connectionId", id), zap.Error(err))
+		h.logger.Warn("List of WebShell AI dialogues failed", zap.String("connectionId", id), zap.Error(err))
 		c.JSON(http.StatusOK, []database.WebShellConversationItem{})
 		return
 	}
@@ -755,7 +755,7 @@ func (h *WebShellHandler) Exec(c *gin.Context) {
 	if cid := strings.TrimSpace(req.ConnectionID); cid != "" {
 		conn, allowed := h.authorizedWebshellConnection(c, cid, req.URL)
 		if !allowed {
-			c.JSON(http.StatusForbidden, gin.H{"error": "无权访问该资源"})
+			c.JSON(http.StatusForbidden, gin.H{"error": "Not entitled to visit that resource"})
 			return
 		}
 		// Never let a caller pair an authorized ID with attacker-controlled
@@ -763,11 +763,11 @@ func (h *WebShellHandler) Exec(c *gin.Context) {
 		req.URL, req.Password, req.Type = conn.URL, conn.Password, conn.Type
 		req.Method, req.CmdParam, req.Encoding = conn.Method, conn.CmdParam, conn.Encoding
 	} else if !security.SessionHasPermission(c, "webshell:write") {
-		c.JSON(http.StatusForbidden, gin.H{"error": "无权访问该资源"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "Not entitled to visit that resource"})
 		return
 	}
 	if req.Password == maskedSecret {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请使用已保存连接或填写新的连接口令"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Use saved connection or fill in new connection password"})
 		return
 	}
 
@@ -866,13 +866,13 @@ func (h *WebShellHandler) FileOp(c *gin.Context) {
 	if cid := strings.TrimSpace(req.ConnectionID); cid != "" {
 		conn, allowed := h.authorizedWebshellConnection(c, cid, req.URL)
 		if !allowed {
-			c.JSON(http.StatusForbidden, gin.H{"error": "无权访问该资源"})
+			c.JSON(http.StatusForbidden, gin.H{"error": "Not entitled to visit that resource"})
 			return
 		}
 		req.URL, req.Password, req.Type = conn.URL, conn.Password, conn.Type
 		req.Method, req.CmdParam, req.Encoding, req.OS = conn.Method, conn.CmdParam, conn.Encoding, conn.OS
 	} else if !security.SessionHasPermission(c, "webshell:write") {
-		c.JSON(http.StatusForbidden, gin.H{"error": "无权访问该资源"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "Not entitled to visit that resource"})
 		return
 	}
 

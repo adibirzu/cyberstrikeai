@@ -2,6 +2,7 @@ package multiagent
 
 import (
 	"context"
+	"cyberstrike-ai/internal/legacytext"
 	"errors"
 	"fmt"
 	"regexp"
@@ -102,7 +103,7 @@ func isEinoIterationLimitError(err error) bool {
 		strings.Contains(msg, "maximum iteration") ||
 		strings.Contains(msg, "maximum iterations") ||
 		strings.Contains(msg, "iteration limit") ||
-		strings.Contains(msg, "达到最大迭代")
+		legacytext.Contains(msg, "Maximum iteration")
 }
 
 // einoADKRunLoopArgs 将 Eino adk.Runner 事件循环从 RunDeepAgent / RunEinoSingleChatModelAgent 中抽出复用。
@@ -156,7 +157,7 @@ type einoADKRunLoopArgs struct {
 
 func runEinoADKAgentLoop(ctx context.Context, args *einoADKRunLoopArgs, baseMsgs []adk.Message) (*RunResult, error) {
 	if args == nil || args.DA == nil {
-		return nil, fmt.Errorf("eino run loop: args 或 Agent 为空")
+		return nil, fmt.Errorf("eino run loop: args or Agent is empty")
 	}
 	if args.McpIDs == nil {
 		s := []string{}
@@ -208,7 +209,7 @@ func runEinoADKAgentLoop(ctx context.Context, args *einoADKRunLoopArgs, baseMsgs
 				logger.Error("eino runner panic recovered", zap.Any("recover", r), zap.Stack("stack"))
 			}
 			if progress != nil {
-				progress("error", fmt.Sprintf("Internal error: %v / 内部错误: %v", r, r), map[string]interface{}{
+				progress("error", fmt.Sprintf("Internal error: %v / Internal error: %v", r, r), map[string]interface{}{
 					"conversationId": conversationID,
 					"source":         "eino",
 				})
@@ -221,7 +222,7 @@ func runEinoADKAgentLoop(ctx context.Context, args *einoADKRunLoopArgs, baseMsgs
 	emptyHint := strings.TrimSpace(args.EmptyResponseMessage)
 	if emptyHint == "" {
 		emptyHint = "(Eino session completed but no assistant text was captured. Check process details or logs.) " +
-			"（Eino 会话已完成，但未捕获到助手文本输出。请查看过程详情或日志。）"
+			"(Eino session is complete, but the assistant text output is not captured. See process details or log."
 	}
 
 	if args.EinoCallbacks != nil {
@@ -363,7 +364,7 @@ func friendlyEinoExecuteInvokeTail(invokeErr error) string {
 	if strings.Contains(invokeErr.Error(), "shell inactivity timeout") {
 		return ""
 	}
-	return "[执行未正常结束] " + invokeErr.Error()
+	return "[Implementation not properly completed] " + invokeErr.Error()
 }
 
 // einoToolResultIsError 统一判断 Eino 工具结果是否应标记为错误（与 MCP exec 的 IsError 对齐）。
@@ -386,12 +387,12 @@ func isMCPBackgroundWaitResult(content string) bool {
 	hasRunningStatus := strings.Contains(text, "status: running") || strings.Contains(text, "status: queued") ||
 		strings.Contains(text, `"status": "running"`) || strings.Contains(text, `"status":"running"`) ||
 		strings.Contains(text, `"status": "queued"`) || strings.Contains(text, `"status":"queued"`)
-	hasSoftWaitSignal := strings.Contains(text, "工具已提交到后台执行") ||
-		strings.Contains(text, "本次等待已到达") ||
+	hasSoftWaitSignal := legacytext.Contains(text, "The tool is running in the background") ||
+		legacytext.Contains(text, "This wait reached") ||
 		strings.Contains(text, "wait_timeout:") ||
 		strings.Contains(text, "background execution") ||
 		strings.Contains(text, "still running") ||
-		strings.Contains(text, "仍未完成")
+		legacytext.Contains(text, "still incomplete")
 	return hasExecutionID && hasRunningStatus && hasSoftWaitSignal
 }
 

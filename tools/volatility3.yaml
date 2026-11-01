@@ -1,51 +1,32 @@
 name: "volatility3"
 command: "volatility3"
 enabled: true
-short_description: "Volatility3内存取证分析工具"
+short_description: "Analyze memory images with Volatility 3 plugins"
 description: |
-  Volatility3是Volatility框架的下一代版本，用于内存取证分析。
+  Analyze memory images with Volatility 3 plugins.
 
-  **主要功能：**
-  - 内存转储分析
-  - 高级插件系统
-  - 改进的性能
-  - 更好的文档
-
-  **使用场景：**
-  - 内存取证
-  - 恶意软件分析
-  - 事件响应
-  - 数字取证
+  Use the parameters below to select the target and native options. Additional native arguments are supported where exposed by this recipe.
 parameters:
   - name: "memory_file"
     type: "string"
-    description: "内存转储文件路径"
+    description: "Path to the memory image. Native option: -f."
     required: true
     flag: "-f"
     format: "flag"
   - name: "plugin"
     type: "string"
-    description: "要执行的Volatility3插件"
+    description: "Plugin to run."
     required: true
     position: 0
     format: "positional"
   - name: "output_file"
     type: "string"
-    description: "输出文件路径"
+    description: "Path for the output file. Native option: -o."
     required: false
     flag: "-o"
     format: "flag"
   - name: "additional_args"
     type: "string"
-    description: |
-      额外的volatility3参数。用于传递未在参数列表中定义的volatility3选项。
-
-      **示例值：**
-      - 根据工具特性添加常用参数示例
-
-      **注意事项：**
-      - 多个参数用空格分隔
-      - 确保参数格式正确，避免命令注入
-      - 此参数会直接追加到命令末尾
+    description: "Additional native command-line arguments, appended according to this recipe."
     required: false
     format: "positional"

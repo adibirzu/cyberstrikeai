@@ -153,7 +153,7 @@ func TestUpdateApplyRefusesRestartWhenNothingCanStartTheProcessAgain(t *testing.
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400: restarting without a supervisor would just stop the platform", w.Code)
 	}
-	if !strings.Contains(w.Body.String(), "重启") {
+	if !strings.Contains(w.Body.String(), "restart") {
 		t.Errorf("the refusal must say why: %s", w.Body)
 	}
 }

@@ -82,7 +82,7 @@ args:
         if not isinstance(config, dict):
             error_result = {
                 "status": "error",
-                "message": f"参数解析错误: 期望字典类型，但得到 {type(config).__name__}",
+                "message": f"Invalid parameters: expected an object, got {type(config).__name__}",
                 "type": "TypeError"
             }
             print(json.dumps(error_result, ensure_ascii=False, indent=2))
@@ -94,9 +94,9 @@ args:
         if not api_key:
             error_result = {
                 "status": "error",
-                "message": "缺少Quake配置: api_key（Quake API Token）",
+                "message": 'Missing Quake configuration: api_key',
                 "required_config": ["api_key"],
-                "note": "请在YAML文件的QUAKE_API_KEY配置项中填写Token，或在环境变量QUAKE_API_KEY中设置。Token可在Quake用户中心获取。"
+                "note": "Set QUAKE_API_KEY in this recipe or its explicitly configured child environment. Obtain a token from your Quake user account."
             }
             print(json.dumps(error_result, ensure_ascii=False, indent=2))
             sys.exit(1)
@@ -104,14 +104,14 @@ args:
         if not query:
             error_result = {
                 "status": "error",
-                "message": "缺少必需参数: query（搜索查询语句）",
+                "message": 'Missing required parameter: query (search expression)',
                 "required_params": ["query"],
                 "examples": [
                     'domain:"example.com"',
                     'ip:"1.1.1.1"',
                     'port:443',
                     'service.name:"http"',
-                    'port:22 AND country_cn:"中国"'
+                    'port:22'
                 ]
             }
             print(json.dumps(error_result, ensure_ascii=False, indent=2))
@@ -170,9 +170,9 @@ args:
             if result_data.get("code") != 0:
                 error_result = {
                     "status": "error",
-                    "message": f"Quake API错误: {result_data.get('message', '未知错误')}",
+                    "message": f"Quake API Error: {result_data.get('message', 'Unknown error')}",
                     "error_code": result_data.get("code", "unknown"),
-                    "suggestion": "请检查API Token、查询语法和账户积分是否正常"
+                    "suggestion": 'Check the API token, query syntax and available account credits.'
                 }
                 print(json.dumps(error_result, ensure_ascii=False, indent=2))
                 sys.exit(1)
@@ -200,7 +200,7 @@ args:
                 "results_count": len(results),
                 "fields": include_fields or "all",
                 "results": results,
-                "message": f"成功获取 {len(results)} 条结果"
+                "message": f"Retrieved {len(results)} results"
             }
 
             print(json.dumps(output, ensure_ascii=False, indent=2))
@@ -208,8 +208,8 @@ args:
         except requests.exceptions.RequestException as e:
             error_result = {
                 "status": "error",
-                "message": f"请求失败: {str(e)}",
-                "suggestion": "请检查网络连通性或Quake API服务状态"
+                "message": f"Request failed: {str(e)}",
+                "suggestion": 'Check the network connection or Quake API Service Status'
             }
             print(json.dumps(error_result, ensure_ascii=False, indent=2))
             sys.exit(1)
@@ -217,86 +217,48 @@ args:
     except Exception as e:
         error_result = {
             "status": "error",
-            "message": f"执行出错: {str(e)}",
+            "message": f"Execution failed: {str(e)}",
             "type": type(e).__name__
         }
         print(json.dumps(error_result, ensure_ascii=False, indent=2))
         sys.exit(1)
 enabled: false
-short_description: "Quake网络空间搜索接口，支持自定义query、size、fields"
+short_description: "Search Quake internet asset records"
 description: |
-  Quake（360 网络空间测绘）资产搜索工具，调用 Quake API v3 实时检索互联网资产。
+  Search Quake internet asset records.
 
-  **主要功能：**
-  - 支持 Quake DSL 查询语法（query）
-  - 支持返回数量控制（size）
-  - 支持字段裁剪（fields，对应 Quake include）
-  - 支持分页偏移（start）
-
-  **鉴权方式：**
-  - Header 使用 `X-QuakeToken`
-  - 可在本文件中填写 `QUAKE_API_KEY`，或通过环境变量 `QUAKE_API_KEY` 注入
-
-  **常见查询示例：**
-  - `domain:"example.com"`
-  - `ip:"1.1.1.1"`
-  - `port:443`
-  - `service.name:"http" AND country_cn:"中国"`
-
-  **注意事项：**
-  - API 调用会消耗积分，请按需控制 `size`
-  - `fields` 会映射到请求体 `include` 字段，多个字段用英文逗号分隔
-  - 如遇语法报错，请先在 Quake 控制台验证 DSL
+  Use the parameters below to select the target and native options. Additional native arguments are supported where exposed by this recipe.
 parameters:
   - name: "query"
     type: "string"
-    description: |
-      Quake DSL 查询语句（必需）。
-
-      **示例：**
-      - `domain:"example.com"`
-      - `ip:"1.1.1.1"`
-      - `port:443`
-      - `service.name:"http" AND country_cn:"中国"`
+    description: "Search query in the selected provider syntax."
     required: true
     position: 1
     format: "positional"
   - name: "size"
     type: "int"
-    description: |
-      返回结果数量（可选）。
-
-      建议范围：1-100（具体受账户权限/接口限制影响）。
+    description: "Maximum number of results to return. Default: 10."
     required: false
     position: 2
     format: "positional"
     default: 10
   - name: "start"
     type: "int"
-    description: |
-      分页起始偏移（可选），从 0 开始。
+    description: "Zero-based result offset. Default: 0."
     required: false
     position: 3
     format: "positional"
     default: 0
   - name: "fields"
     type: "string"
-    description: |
-      返回字段（可选），多个字段用英文逗号分隔。
-
-      该参数会映射到 Quake 请求体中的 `include` 字段。
-      **示例：**
-      - `ip,port`
-      - `ip,port,service.name,service.http.title,location.country_cn`
+    description: "Fields to include in the response. Default: ip,port."
     required: false
     position: 4
     format: "positional"
     default: "ip,port"
   - name: "latest"
     type: "bool"
-    description: |
-      是否优先返回最新索引结果（可选）。
-      默认 `true`。
+    description: "Prefer the latest indexed result. Default: true."
     required: false
     position: 5
     format: "positional"

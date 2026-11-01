@@ -73,7 +73,7 @@ func TestBuiltinAdminProtectionPreservesAuthentication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if user.DisplayName != "管理员" || !user.Enabled {
+	if user.DisplayName != "Administrator" || !user.Enabled {
 		t.Fatalf("rejected update mutated admin: %#v", user)
 	}
 	newToken, _, err := auth.Authenticate("admin", password)

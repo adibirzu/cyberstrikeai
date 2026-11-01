@@ -1,44 +1,34 @@
 name: "subfinder"
 command: "subfinder"
 enabled: true
-short_description: "被动子域名发现工具，使用多个数据源"
+short_description: "Discover subdomains from passive data sources"
 description: |
-  Subfinder是一个被动子域名发现工具，通过查询多个数据源来发现子域名。
+  Discover subdomains from passive data sources.
 
-  **主要功能：**
-  - 被动子域名发现
-  - 多个数据源集成
-  - 快速扫描
-  - 支持API密钥配置
-
-  **使用场景：**
-  - 子域名枚举
-  - 资产发现
-  - Bug bounty侦察
-  - 渗透测试信息收集
+  Use the parameters below to select the target and native options. Additional native arguments are supported where exposed by this recipe.
 parameters:
   - name: "domain"
     type: "string"
-    description: "目标域名"
+    description: "Target domain name. Native option: -d."
     required: true
     flag: "-d"
     format: "flag"
   - name: "silent"
     type: "bool"
-    description: "静默模式"
+    description: "Suppress non-result output. Native option: -silent. Default: true."
     required: false
     default: true
     flag: "-silent"
     format: "flag"
   - name: "all_sources"
     type: "bool"
-    description: "使用所有数据源"
+    description: "Use all supported passive data sources. Native option: -all. Default: false."
     required: false
     default: false
     flag: "-all"
     format: "flag"
   - name: "additional_args"
     type: "string"
-    description: "额外的Subfinder参数"
+    description: "Additional native command-line arguments, appended according to this recipe."
     required: false
     format: "positional"

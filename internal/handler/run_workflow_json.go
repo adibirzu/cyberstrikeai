@@ -35,7 +35,7 @@ func (h *AgentHandler) runWorkflowJSON(taskCtx, baseCtx context.Context, cancelW
 		cause := context.Cause(baseCtx)
 		if errors.Is(cause, ErrTaskCancelled) {
 			*status = "cancelled"
-			cancelMsg := "任务已被用户取消，后续操作已停止。"
+			cancelMsg := "The task has been cancelled by the user and follow-up has been stopped."
 			if assistantMessageID != "" {
 				_ = h.appendAssistantMessageNotice(assistantMessageID, cancelMsg)
 				_ = h.db.AddProcessDetail(assistantMessageID, conversationID, "cancelled", cancelMsg, nil)
@@ -47,7 +47,7 @@ func (h *AgentHandler) runWorkflowJSON(taskCtx, baseCtx context.Context, cancelW
 			})
 			return
 		}
-		errMsg := "执行角色绑定流程失败: " + err.Error()
+		errMsg := "Implementation of role binding process failed: " + err.Error()
 		*status = "failed"
 		if assistantMessageID != "" {
 			_, _ = h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", errMsg, time.Now(), assistantMessageID)

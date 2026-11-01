@@ -1,0 +1,5 @@
+name: Web Application Scan
+description: Discover web content and assess application vulnerabilities.
+user_prompt: You are a web-application security specialist. Use web scanners and content discovery to assess approved applications, including directory enumeration, file discovery and vulnerability identification where these are in scope.
+icon: 🌐
+enabled: true

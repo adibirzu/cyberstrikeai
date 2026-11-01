@@ -16,7 +16,7 @@ import (
 const finalizationAutoContinueMaxAttempts = 2
 const finalizationPendingToolCancelWait = 2 * time.Second
 const finalizationPendingToolCancelPoll = 50 * time.Millisecond
-const finalizationPendingToolCancelNote = "Agent 迭代已结束，最终回复前自动终止未完成的工具执行"
+const finalizationPendingToolCancelNote = "Agent is over and the tool implementation is automatically terminated before the final response"
 
 func shouldAutoContinueAfterFinalization(d agentfinalizer.Decision, attempt int) bool {
 	if d.Finalizable || d.Finalized {
@@ -54,7 +54,7 @@ func (h *AgentHandler) tryAutoContinueAfterFinalization(
 	// Agent 无感续跑：不追加新的 user/system 文案，只使用上一段模型可见轨迹继续 Runner。
 	*curFinalMessage = ""
 	if progressCallback != nil {
-		progressCallback("finalization_auto_continue", "最终回复检查尚未收敛，正在基于已有轨迹继续执行…", map[string]interface{}{
+		progressCallback("finalization_auto_continue", "The final response check is still not constricted and is continuing on the basis of existing tracks...", map[string]interface{}{
 			"conversationId":      conversationID,
 			"source":              "finalizer",
 			"attempt":             *attempt,
@@ -108,7 +108,7 @@ func (h *AgentHandler) cleanupPendingToolExecutionsAfterIteration(
 		return nil
 	}
 	if progressCallback != nil {
-		progressCallback("finalization_pending_tools_cancelled", "迭代结束，已自动终止仍在运行的工具执行。", map[string]interface{}{
+		progressCallback("finalization_pending_tools_cancelled", "The iterative period ends and the active tool implementation is automatically terminated.", map[string]interface{}{
 			"conversationId":                   conversationID,
 			"source":                           "finalizer",
 			"autoCancelledPendingExecutionIds": cancelled,

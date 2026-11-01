@@ -33,16 +33,16 @@ type workflowPackageImportRequest struct {
 func (h *WorkflowHandler) ExportPackage(c *gin.Context) {
 	wf, err := h.db.GetWorkflowDefinition(c.Param("id"))
 	if err != nil {
-		writeWorkflowPackageError(c, http.StatusInternalServerError, "WFPKG_EXPORT_FAILED", "导出工作流包失败", nil)
+		writeWorkflowPackageError(c, http.StatusInternalServerError, "WFPKG_EXPORT_FAILED", "Failed to export workstream", nil)
 		return
 	}
 	if wf == nil {
-		writeWorkflowPackageError(c, http.StatusNotFound, "WFPKG_WORKFLOW_NOT_FOUND", "工作流不存在", nil)
+		writeWorkflowPackageError(c, http.StatusNotFound, "WFPKG_WORKFLOW_NOT_FOUND", "Workstream doesn't exist", nil)
 		return
 	}
 	pkg, meta, err := workflowpkg.Export(workflowPackageDocument(wf))
 	if err != nil {
-		writeWorkflowPackageError(c, http.StatusInternalServerError, "WFPKG_EXPORT_FAILED", "导出工作流包失败", nil)
+		writeWorkflowPackageError(c, http.StatusInternalServerError, "WFPKG_EXPORT_FAILED", "Failed to export workstream", nil)
 		return
 	}
 	c.Header("Content-Type", "application/zip")
@@ -50,7 +50,7 @@ func (h *WorkflowHandler) ExportPackage(c *gin.Context) {
 	c.Header("ETag", `"`+meta.PackageHash+`"`)
 	c.Header("X-Workflow-Package-SHA256", meta.PackageHash)
 	if h.audit != nil {
-		h.audit.RecordOK(c, "workflow_package", "export", "导出工作流包", "workflow", wf.ID, map[string]interface{}{"package_hash": meta.PackageHash})
+		h.audit.RecordOK(c, "workflow_package", "export", "Export Workstream", "workflow", wf.ID, map[string]interface{}{"package_hash": meta.PackageHash})
 	}
 	c.Data(http.StatusOK, "application/zip", pkg)
 }
@@ -58,7 +58,7 @@ func (h *WorkflowHandler) ExportPackage(c *gin.Context) {
 func (h *WorkflowHandler) CreatePackageInspection(c *gin.Context) {
 	session, ok := security.CurrentSession(c)
 	if !ok || strings.TrimSpace(session.UserID) == "" {
-		writeWorkflowPackageError(c, http.StatusUnauthorized, "WFPKG_INSPECTION_NOT_FOUND", "未授权访问", nil)
+		writeWorkflowPackageError(c, http.StatusUnauthorized, "WFPKG_INSPECTION_NOT_FOUND", "Unauthorized", nil)
 		return
 	}
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, workflowpkg.MaxArchiveBytes+1)
@@ -66,16 +66,16 @@ func (h *WorkflowHandler) CreatePackageInspection(c *gin.Context) {
 	if err != nil {
 		var maxErr *http.MaxBytesError
 		if errors.As(err, &maxErr) {
-			writeWorkflowPackageError(c, http.StatusUnprocessableEntity, "WFPKG_FILE_TOO_LARGE", "工作流包文件超过大小限制", nil)
+			writeWorkflowPackageError(c, http.StatusUnprocessableEntity, "WFPKG_FILE_TOO_LARGE", "Workstream file exceeding size limit", nil)
 			return
 		}
-		writeWorkflowPackageError(c, http.StatusUnprocessableEntity, "WFPKG_FILE_REQUIRED", "必须上传工作流包文件", nil)
+		writeWorkflowPackageError(c, http.StatusUnprocessableEntity, "WFPKG_FILE_REQUIRED", "Workstream files must be uploaded", nil)
 		return
 	}
 	defer file.Close()
 	archive, err := io.ReadAll(io.LimitReader(file, workflowpkg.MaxArchiveBytes+1))
 	if err != nil || len(archive) > workflowpkg.MaxArchiveBytes {
-		writeWorkflowPackageError(c, http.StatusUnprocessableEntity, "WFPKG_FILE_TOO_LARGE", "工作流包文件超过大小限制", nil)
+		writeWorkflowPackageError(c, http.StatusUnprocessableEntity, "WFPKG_FILE_TOO_LARGE", "Workstream file exceeding size limit", nil)
 		return
 	}
 	inspected, err := workflowpkg.InspectArchive(c.Request.Context(), archive, workflowrunner.ValidateGraphJSON)
@@ -85,14 +85,14 @@ func (h *WorkflowHandler) CreatePackageInspection(c *gin.Context) {
 			code = "WFPKG_INVALID_ARCHIVE"
 		}
 		if h.audit != nil {
-			h.audit.RecordFail(c, "workflow_package", "inspect", "工作流包预检失败", map[string]interface{}{"code": code, "package_hash": workflowPackageHash(archive)})
+			h.audit.RecordFail(c, "workflow_package", "inspect", "Workflow pre-check failed", map[string]interface{}{"code": code, "package_hash": workflowPackageHash(archive)})
 		}
-		writeWorkflowPackageError(c, http.StatusUnprocessableEntity, code, "工作流包预检失败", nil)
+		writeWorkflowPackageError(c, http.StatusUnprocessableEntity, code, "Workflow pre-check failed", nil)
 		return
 	}
 	state, local, err := h.workflowPackageConflict(inspected.Document.ID, inspected.ContentHash)
 	if err != nil {
-		writeWorkflowPackageError(c, http.StatusInternalServerError, "WFPKG_IMPORT_FAILED", "读取本地工作流失败", nil)
+		writeWorkflowPackageError(c, http.StatusInternalServerError, "WFPKG_IMPORT_FAILED", "Failed to read local workflow", nil)
 		return
 	}
 	summary := workflowPackageInspectionSummary{ID: "wpi_" + strings.ReplaceAll(uuid.NewString(), "-", ""), Status: "ready", ExpiresAt: time.Now().UTC().Add(30 * time.Minute), Package: workflowPackagePackageSummary{PackageFormat: inspected.Manifest.PackageFormat, FormatVersion: inspected.Manifest.FormatVersion, PackageID: inspected.Manifest.PackageID, PackageHash: inspected.PackageHash}, Workflow: workflowPackageWorkflowSummary{SourceID: inspected.Document.ID, Name: inspected.Document.Name, Description: inspected.Document.Description, SourceRevision: inspected.Document.Version, Enabled: inspected.Document.Enabled, ContentHash: inspected.ContentHash, GraphHash: inspected.GraphHash, NodeCount: inspected.NodeCount, EdgeCount: inspected.EdgeCount}, Conflict: workflowPackageConflictSummary{State: state}, Warnings: []string{}}
@@ -103,7 +103,7 @@ func (h *WorkflowHandler) CreatePackageInspection(c *gin.Context) {
 	manifestJSON, _ := json.Marshal(inspected.Manifest)
 	payloadJSON, err := json.Marshal(inspected.Document)
 	if err != nil {
-		writeWorkflowPackageError(c, http.StatusInternalServerError, "WFPKG_IMPORT_FAILED", "保存预检失败", nil)
+		writeWorkflowPackageError(c, http.StatusInternalServerError, "WFPKG_IMPORT_FAILED", "Save precheck failed", nil)
 		return
 	}
 	inspectionJSON, _ := json.Marshal(summary)
@@ -115,11 +115,11 @@ func (h *WorkflowHandler) CreatePackageInspection(c *gin.Context) {
 		record.LocalGraphHash = graph
 	}
 	if err := h.db.CreateWorkflowPackageInspection(record); err != nil {
-		writeWorkflowPackageError(c, http.StatusInternalServerError, "WFPKG_IMPORT_FAILED", "保存预检失败", nil)
+		writeWorkflowPackageError(c, http.StatusInternalServerError, "WFPKG_IMPORT_FAILED", "Save precheck failed", nil)
 		return
 	}
 	if h.audit != nil {
-		h.audit.RecordOK(c, "workflow_package", "inspect", "工作流包预检成功", "inspection", record.ID, map[string]interface{}{"package_hash": record.PackageHash, "workflow_id": record.SourceWorkflowID})
+		h.audit.RecordOK(c, "workflow_package", "inspect", "Workstream pre-test successful", "inspection", record.ID, map[string]interface{}{"package_hash": record.PackageHash, "workflow_id": record.SourceWorkflowID})
 	}
 	c.JSON(http.StatusCreated, gin.H{"inspection": summary})
 }
@@ -127,20 +127,20 @@ func (h *WorkflowHandler) CreatePackageInspection(c *gin.Context) {
 func (h *WorkflowHandler) GetPackageInspection(c *gin.Context) {
 	session, ok := security.CurrentSession(c)
 	if !ok {
-		writeWorkflowPackageError(c, http.StatusUnauthorized, "WFPKG_INSPECTION_NOT_FOUND", "未授权访问", nil)
+		writeWorkflowPackageError(c, http.StatusUnauthorized, "WFPKG_INSPECTION_NOT_FOUND", "Unauthorized", nil)
 		return
 	}
 	v, err := h.db.GetWorkflowPackageInspection(c.Param("inspectionId"), session.UserID)
 	if err != nil {
-		writeWorkflowPackageError(c, http.StatusInternalServerError, "WFPKG_IMPORT_FAILED", "读取预检失败", nil)
+		writeWorkflowPackageError(c, http.StatusInternalServerError, "WFPKG_IMPORT_FAILED", "Failed to read precheck", nil)
 		return
 	}
 	if v == nil {
-		writeWorkflowPackageError(c, http.StatusNotFound, "WFPKG_INSPECTION_NOT_FOUND", "预检不存在", nil)
+		writeWorkflowPackageError(c, http.StatusNotFound, "WFPKG_INSPECTION_NOT_FOUND", "Precheck does not exist", nil)
 		return
 	}
 	if v.Status == "expired" {
-		writeWorkflowPackageError(c, http.StatusConflict, "WFPKG_INSPECTION_EXPIRED", "预检已过期", nil)
+		writeWorkflowPackageError(c, http.StatusConflict, "WFPKG_INSPECTION_EXPIRED", "Pre-inspection expired", nil)
 		return
 	}
 	var summary any
@@ -151,24 +151,24 @@ func (h *WorkflowHandler) GetPackageInspection(c *gin.Context) {
 func (h *WorkflowHandler) ApplyPackageImport(c *gin.Context) {
 	session, ok := security.CurrentSession(c)
 	if !ok {
-		writeWorkflowPackageError(c, http.StatusUnauthorized, "WFPKG_INSPECTION_NOT_FOUND", "未授权访问", nil)
+		writeWorkflowPackageError(c, http.StatusUnauthorized, "WFPKG_INSPECTION_NOT_FOUND", "Unauthorized", nil)
 		return
 	}
 	key := strings.TrimSpace(c.GetHeader("Idempotency-Key"))
 	if _, err := uuid.Parse(key); err != nil {
-		writeWorkflowPackageError(c, http.StatusBadRequest, "WFPKG_IDEMPOTENCY_KEY_REQUIRED", "必须提供 UUID 幂等键", nil)
+		writeWorkflowPackageError(c, http.StatusBadRequest, "WFPKG_IDEMPOTENCY_KEY_REQUIRED", "UUID key must be provided", nil)
 		return
 	}
 	var req workflowPackageImportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		writeWorkflowPackageError(c, http.StatusUnprocessableEntity, "WFPKG_INVALID_ACTION", "导入请求无效", nil)
+		writeWorkflowPackageError(c, http.StatusUnprocessableEntity, "WFPKG_INVALID_ACTION", "Import request invalid", nil)
 		return
 	}
 	req.InspectionID = strings.TrimSpace(req.InspectionID)
 	req.Resolution.Action = strings.TrimSpace(req.Resolution.Action)
 	req.Resolution.NewWorkflowID = strings.TrimSpace(req.Resolution.NewWorkflowID)
 	if req.Resolution.Action != "rename" && req.Resolution.NewWorkflowID != "" {
-		writeWorkflowPackageError(c, http.StatusUnprocessableEntity, "WFPKG_INVALID_ACTION", "当前导入动作不接受新工作流 ID", nil)
+		writeWorkflowPackageError(c, http.StatusUnprocessableEntity, "WFPKG_INVALID_ACTION", "Current import action does not accept new workflow ID", nil)
 		return
 	}
 	requestHash := workflowPackageRequestHash(req)
@@ -183,7 +183,7 @@ func (h *WorkflowHandler) ApplyPackageImport(c *gin.Context) {
 	}
 	response := h.workflowPackageImportResponse(imp, wf)
 	if !replayed && h.audit != nil {
-		h.audit.RecordOK(c, "workflow_package", "import", "工作流包导入成功", "workflow", imp.ResultingWorkflowID, map[string]interface{}{"inspection_id": imp.InspectionID, "action": imp.Action, "result": imp.Result})
+		h.audit.RecordOK(c, "workflow_package", "import", "Workstream import succeeded", "workflow", imp.ResultingWorkflowID, map[string]interface{}{"inspection_id": imp.InspectionID, "action": imp.Action, "result": imp.Result})
 	}
 	status := http.StatusCreated
 	if replayed {
@@ -195,16 +195,16 @@ func (h *WorkflowHandler) ApplyPackageImport(c *gin.Context) {
 func (h *WorkflowHandler) GetPackageImport(c *gin.Context) {
 	session, ok := security.CurrentSession(c)
 	if !ok {
-		writeWorkflowPackageError(c, http.StatusUnauthorized, "WFPKG_INSPECTION_NOT_FOUND", "未授权访问", nil)
+		writeWorkflowPackageError(c, http.StatusUnauthorized, "WFPKG_INSPECTION_NOT_FOUND", "Unauthorized", nil)
 		return
 	}
 	imp, err := h.db.GetWorkflowPackageImport(c.Param("importId"), session.UserID)
 	if err != nil {
-		writeWorkflowPackageError(c, http.StatusInternalServerError, "WFPKG_IMPORT_FAILED", "读取导入结果失败", nil)
+		writeWorkflowPackageError(c, http.StatusInternalServerError, "WFPKG_IMPORT_FAILED", "Failed to read import results", nil)
 		return
 	}
 	if imp == nil {
-		writeWorkflowPackageError(c, http.StatusNotFound, "WFPKG_INSPECTION_NOT_FOUND", "导入结果不存在", nil)
+		writeWorkflowPackageError(c, http.StatusNotFound, "WFPKG_INSPECTION_NOT_FOUND", "Import result does not exist", nil)
 		return
 	}
 	wf, _ := h.db.GetWorkflowDefinition(imp.ResultingWorkflowID)
@@ -254,15 +254,15 @@ func (h *WorkflowHandler) writeWorkflowPackageImportError(c *gin.Context, inspec
 			status = http.StatusUnprocessableEntity
 		}
 		if h.audit != nil {
-			h.audit.RecordFail(c, "workflow_package", "import", "工作流包导入失败", map[string]interface{}{"code": e.Code, "inspection_id": inspectionID})
+			h.audit.RecordFail(c, "workflow_package", "import", "Workstream import failed", map[string]interface{}{"code": e.Code, "inspection_id": inspectionID})
 		}
 		writeWorkflowPackageError(c, status, e.Code, e.Message, nil)
 		return
 	}
 	if h.audit != nil {
-		h.audit.RecordFail(c, "workflow_package", "import", "工作流包导入失败", map[string]interface{}{"code": "WFPKG_IMPORT_FAILED", "inspection_id": inspectionID})
+		h.audit.RecordFail(c, "workflow_package", "import", "Workstream import failed", map[string]interface{}{"code": "WFPKG_IMPORT_FAILED", "inspection_id": inspectionID})
 	}
-	writeWorkflowPackageError(c, http.StatusInternalServerError, "WFPKG_IMPORT_FAILED", "导入工作流包失败", nil)
+	writeWorkflowPackageError(c, http.StatusInternalServerError, "WFPKG_IMPORT_FAILED", "Failed to import workstream", nil)
 }
 func writeWorkflowPackageError(c *gin.Context, status int, code, message string, details map[string]any) {
 	body := gin.H{"code": code, "message": message}

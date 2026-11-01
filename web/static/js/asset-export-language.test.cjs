@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, 'assets.js'), 'utf8');
 function context(locale) {
-    const translations = JSON.parse(fs.readFileSync(path.join(__dirname, '../i18n', locale + '.json'))).assets;
+    const translations = JSON.parse(fs.readFileSync((locale === 'zh-CN' ? path.resolve(__dirname, '../../../maintenance/vendor-locales/zh-CN.json') : path.join(__dirname, '../i18n', locale + '.json')))).assets;
     const c = vm.createContext({ window: { i18next: { t: key => translations[key.slice(7)] || key } } });
     vm.runInContext(source.slice(source.indexOf('function assetT('), source.indexOf('function downloadAssetTemplate(')), c);
     vm.runInContext(source.slice(source.indexOf('function assetRiskPresentation('), source.indexOf('function assetOwnershipMarkup(')), c);

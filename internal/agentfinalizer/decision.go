@@ -1,6 +1,7 @@
 package agentfinalizer
 
 import (
+	"cyberstrike-ai/internal/legacytext"
 	"strings"
 
 	"cyberstrike-ai/internal/database"
@@ -187,7 +188,7 @@ func isEmptyCandidate(s string) bool {
 		return true
 	}
 	return strings.Contains(s, "no assistant text was captured") ||
-		strings.Contains(s, "未捕获到助手文本输出")
+		legacytext.Contains(s, "Assistant text output not captured")
 }
 
 func evidenceRefs(ids []string) []string {

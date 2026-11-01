@@ -1,6 +1,7 @@
 package project
 
 import (
+	"cyberstrike-ai/internal/legacytext"
 	"fmt"
 	"strings"
 
@@ -47,11 +48,11 @@ func IsSparseFactBody(category, factKey, body string) bool {
 	}
 	lower := strings.ToLower(body)
 	// 至少应包含可复现线索：步骤/请求/命令/代码块 之一
-	hasSteps := strings.Contains(lower, "攻击链") || strings.Contains(lower, "## 攻击") ||
+	hasSteps := legacytext.Contains(lower, "attack chain") || legacytext.Contains(lower, "## Attack!") ||
 		strings.Contains(lower, "## exploit") || strings.Contains(lower, "## poc")
 	hasHTTP := strings.Contains(lower, "```http") || strings.Contains(lower, "```bash") ||
 		strings.Contains(lower, "curl ") || strings.Contains(lower, "get ") || strings.Contains(lower, "post ")
-	hasReq := strings.Contains(lower, "请求") || strings.Contains(lower, "响应") || strings.Contains(lower, "payload")
+	hasReq := legacytext.Contains(lower, "Request") || legacytext.Contains(lower, "Response") || strings.Contains(lower, "payload")
 	// 无攻击链/POC/请求等结构线索，视为仅结论性描述（不论长短）
 	return !(hasSteps || hasHTTP || hasReq)
 }
@@ -70,51 +71,51 @@ func FactBodyTemplate(category, factKey string) string {
 	return envFactBodyTemplate
 }
 
-const attackChainFactBodyTemplate = `## 结论（可验证，一句话）
-<勿仅写「存在漏洞」；写明类型 + 位置 + 触发条件>
+const attackChainFactBodyTemplate = `## Conclusion (verified, one sentence)
+<Do not write only "a gap"; state type + location + trigger condition"
 
-## 目标与入口
-- 目标: <URL / IP:Port / 主机名>
-- 入口: <路径 / 接口 / 参数>
-- 前置条件: <匿名 / 角色 / Cookie / 其他依赖>
+## Target and entry point
+- target: <URL / IP:Port / Hostname>
+- Entry: <path / endpoint / parameter>
+- Preconditions: <anonymous / role / secret reference / dependencies>
 
-## 攻击链（逐步可复现）
-1. <侦察/发现>
-2. <利用/触发>
-3. <影响证明（读文件、RCE 回显、越权数据等）>
+## Attack chain (reproducible steps)
+1. <Discovery and baseline>
+2. <Test or exploitation trigger>
+3. <Observed impact evidence; distinguish actual data/access/execution from a hypothesis>
 
 ## Exploit / POC
-### 请求
+### Request
 ` + "```http\n<METHOD> <path> HTTP/1.1\nHost: ...\n...\n\n<body>\n```" + `
 
-### 响应 / 现象
-<关键响应片段、状态码、差异点>
+### Response / observed behavior
+<Relevant response excerpts, status codes and control differences>
 
-### 命令 / 脚本（如有）
+### Command / script (if applicable)
 ` + "```bash\n<command>\n```" + `
 
-## 关键证据
-- <工具输出摘要 / 截图路径 / 会话或消息 ID>
+## Key evidence
+- <Tool output, screenshot/artifact path, session/message ID>
 
-## 关联
-- related_vulnerability_id: <可选，对应 record_vulnerability 的 id>
-- links（upsert 参数）: [{ "from": "<fact_key>", "type": "discovered_on|..." }]（from → 当前 fact）
-- 依赖事实（body 可读镜像）: <fact_key，如 auth/session_cookie>
+## Related
+- related_vulnerability_id: <optional, Correspond record_vulnerability of id>
+- links (upsert Parameters) : [{ "from": "<fact_key>", "type": "discovered_on|..." }] (from → Current fact)
+- Dependent facts (body readable mirrors): <fact_key, e.g. auth/session_cookie>
 
-## 备注与不确定性
-<待验证假设、环境差异、绕过尝试记录>`
+## Limitations and uncertainty
+<Unverified details, environmental differences and unsuccessful tests>`
 
-const envFactBodyTemplate = `## 摘要
-<该事实的核心认知>
+const envFactBodyTemplate = `## Summary
+<Verified observation and its scope>
 
-## 细节
-<端口/版本/路径/凭据特征/业务规则等>
+## Details
+<Port/version/path/authentication characteristics/business rules>
 
-## 来源与证据
-<命令输出、响应片段、发现时间>
+## Sources and evidence
+<Order output, response clips, discovery time >
 
-## 关联
-- 相关 fact_key: <可选>`
+## Related
+- relevant fact_key: < Optional>`
 
 // FactRecordingGuidanceBlock 写入系统提示：要求事实沉淀攻击链上下文而非仅结论。
 func FactRecordingGuidanceBlock() string {
@@ -127,7 +128,7 @@ func SparseBodyWarning(category, factKey string) string {
 		return ""
 	}
 	return fmt.Sprintf(
-		"\n\n⚠ 提示：category=%q / fact_key=%q 属于攻击链类事实，但 body 为空或过简。请补充完整攻击链与 POC（参考模板），便于后续审计复现。\n建议 body 骨架：\n%s",
+		"\n\n⚠ Hint: category=%q / fact_key=%q It's part of the chain of attack., But... body Is empty or too simple.Please complete the attack chain. POC (Reference Templates) , Facilitate follow-up audit recurrence.\nRecommendations body Bones.: \n%s",
 		category, factKey, FactBodyTemplate(category, factKey),
 	)
 }
@@ -140,31 +141,31 @@ func SparseBodyWarningIfNeeded(category, factKey, body string) string {
 	return SparseBodyWarning(category, factKey)
 }
 
-const artifactFactBodyTemplate = `## 成果与验证状态
-<用途、适用目标/入口；已验证成功 / 失败 / 未验证>
+const artifactFactBodyTemplate = `## Results and certification status
+< Usage, applicable target/entry; validated successful/ failed/ not validated >
 
-## 文件与调用
-- 项目工作目录相对路径: artifacts/<文件名>
-- 依赖与版本: <依赖文件、安装/运行环境>
-- 调用方式与可变参数: <命令、输入输出；认证引用 auth/*>
+## File & Call
+- Relative path to the project work directory: artifacts/<Filename>
+- Dependency and version: < Reliance on files, installation/operational environment>
+- Mode of call and variable parameters: < command, input output; authentication reference auth/*>
 
-## 验证证据
-<验证时间、原始命令/输出、适用条件；不要从文件存在推断成功>
+## Validation of evidence
+<Certification time, original command/output, applicable conditions; do not extrapolate success from the existence of the file]
 
-## 关联
-<来源会话、依赖 fact_key、related_vulnerability_id>`
+## Related
+<Source session, depend on fact_key, related_vulnerability_id>`
 
-const testResultFactBodyTemplate = `## 已测条件
-<目标、入口、参数、身份/认证、版本、测试时间>
+const testResultFactBodyTemplate = `## Measured
+<Target, entrance, parameters, identification/certification, version, test time >
 
-## 方法与证据
-<请求/命令、响应差异、工具输出；错误/超时须单独标明>
+## Methodology and evidence
+<Request/command, response difference, tool output; error/overtime must be singled out >
 
-## 结论与边界
-<成功 / 在已测条件下未发现 / 受阻 / 待验证；不扩展到未测试入口>
+## Conclusions and borders
+<Success / Undetected / Obstructed / Unvalidated / Not extended to untested entry >
 
-## 复测触发条件
-<目标/入口/身份/版本变化、原证据不足或用户要求复测>
+## Repeat detection trigger condition
+<Target/entry/identity/version change, original evidence or user request for re-checking >
 
-## 关联
-<来源会话、脚本 artifact/*、相关事实/漏洞 ID>`
+## Related
+<Source Session, Script artifact/*, Relevant facts/vulnerability ID>`

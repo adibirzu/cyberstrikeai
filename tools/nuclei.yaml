@@ -1,49 +1,38 @@
 name: "nuclei"
 command: "nuclei"
 enabled: true
-short_description: "快速漏洞扫描器，使用YAML模板进行漏洞检测"
+short_description: "Run template-based vulnerability checks"
 description: |
-  Nuclei是一个基于模板的快速漏洞扫描器，使用社区维护的YAML模板进行漏洞检测。
+  Run template-based vulnerability checks.
 
-  **主要功能：**
-  - 快速漏洞扫描
-  - 基于模板的检测
-  - 支持多种协议（HTTP, TCP, DNS等）
-  - 实时结果输出
-  - 支持自定义模板
-
-  **使用场景：**
-  - 漏洞扫描和发现
-  - 安全评估
-  - 渗透测试
-  - 漏洞验证
+  Use the parameters below to select the target and native options. Additional native arguments are supported where exposed by this recipe.
 parameters:
   - name: "target"
     type: "string"
-    description: "目标URL或IP"
+    description: "Target host, address or resource accepted by this tool. Native option: -u."
     required: true
     flag: "-u"
     format: "flag"
   - name: "severity"
     type: "string"
-    description: "严重程度过滤（critical,high,medium,low,info）"
+    description: "Severity filter. Native option: -s."
     required: false
     flag: "-s"
     format: "flag"
   - name: "tags"
     type: "string"
-    description: "标签过滤（如cve,rce,lfi）"
+    description: "Tags to select. Native option: -tags."
     required: false
     flag: "-tags"
     format: "flag"
   - name: "template"
     type: "string"
-    description: "自定义模板路径"
+    description: "Template path or selection. Native option: -t."
     required: false
     flag: "-t"
     format: "flag"
   - name: "additional_args"
     type: "string"
-    description: "额外的Nuclei参数"
+    description: "Additional native command-line arguments, appended according to this recipe."
     required: false
     format: "positional"

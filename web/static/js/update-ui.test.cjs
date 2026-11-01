@@ -8,7 +8,7 @@ const template = fs.readFileSync('web/templates/index.html', 'utf8');
 const router = fs.readFileSync('web/static/js/router.js', 'utf8');
 const settings = fs.readFileSync('web/static/js/settings.js', 'utf8');
 const sheet = fs.readFileSync('web/static/css/style.css', 'utf8');
-const zh = JSON.parse(fs.readFileSync('web/static/i18n/zh-CN.json', 'utf8'));
+const zh = JSON.parse(fs.readFileSync('maintenance/vendor-locales/zh-CN.json', 'utf8'));
 const en = JSON.parse(fs.readFileSync('web/static/i18n/en-US.json', 'utf8'));
 const ru = JSON.parse(fs.readFileSync('web/static/i18n/ru-RU.json', 'utf8'));
 
@@ -417,7 +417,7 @@ test('the console lives inside the settings page as its own section', () => {
 
     const settingsNavItem = template.indexOf('<div class="settings-nav-item" data-section="update" data-require-permission="update:read" onclick="switchSettingsSection(\'update\')">');
     assert.ok(settingsNavItem > -1, 'the settings menu must carry the 一键更新 entry');
-    assert.match(template, /<span data-i18n="settings\.nav\.update">一键更新<\/span>/);
+    assert.match(template, /<span data-i18n="settings\.nav\.update">One-Click Update<\/span>/);
     const storageItem = template.indexOf('data-section="storage"');
     assert.ok(storageItem > -1 && storageItem < settingsNavItem, 'the entry must follow 存储清理 in the settings menu');
 
@@ -427,9 +427,9 @@ test('the console lives inside the settings page as its own section', () => {
     const nextPage = template.indexOf('<!-- 平台权限页面 -->');
     assert.ok(pageSettings > -1 && section > pageSettings && nextPage > section,
         'settings-section-update must live inside page-settings');
-    assert.match(template, /id="settings-section-update"[\s\S]{0,700}?id="update-console"/);
+    assert.ok(template.indexOf('id="update-console"', section) > section && template.indexOf('id="update-console"', section) < nextPage, 'update console must be inside the settings section');
     assert.match(template, /id="update-console"/);
-    assert.match(template, /<script src="\/static\/js\/update\.js\?v=\{\{\.Version\}\}"><\/script>/);
+    assert.match(template, /<script src="\/static\/js\/update\.js\?v=20261101-pentforge-english"><\/script>/);
     assert.match(template, /<div class="settings-section-header update-section-head">/);
     assert.match(template, /<h3 data-i18n="update\.title">/);
 

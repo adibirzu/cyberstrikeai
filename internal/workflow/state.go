@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"cyberstrike-ai/internal/legacytext"
 	"fmt"
 	"regexp"
 	"sort"
@@ -139,17 +140,17 @@ func conditionMatched(state *WorkflowLocalState) bool {
 
 func conditionBranchHint(edge graphEdge) string {
 	if edge.Config != nil {
-		switch strings.ToLower(strings.TrimSpace(cfgString(edge.Config, "branch"))) {
-		case "true", "yes", "y", "是":
+		switch strings.ToLower(strings.TrimSpace(legacytext.Token(cfgString(edge.Config, "branch")))) {
+		case "true", "yes", "y":
 			return "true"
-		case "false", "no", "n", "否":
+		case "false", "no", "n":
 			return "false"
 		}
 	}
-	switch strings.ToLower(strings.TrimSpace(edge.Label)) {
-	case "true", "yes", "y", "是":
+	switch strings.ToLower(strings.TrimSpace(legacytext.Token(edge.Label))) {
+	case "true", "yes", "y":
 		return "true"
-	case "false", "no", "n", "否":
+	case "false", "no", "n":
 		return "false"
 	}
 	return ""
@@ -185,15 +186,15 @@ func truncateWorkflowPreview(s string, limit int) string {
 
 func renderWorkflowResponse(roleName, workflowName string, version int, runID string, state *WorkflowLocalState) string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("角色「%s」已完成工作流「%s」（版本 %d）。\n\n", roleName, workflowName, version))
-	sb.WriteString(fmt.Sprintf("运行 ID：%s\n", runID))
-	sb.WriteString(fmt.Sprintf("已执行节点：%d", len(state.Executed)))
+	sb.WriteString(fmt.Sprintf("Role\"%s\"Completed workflow\"%s\" (Version %d) .\n\n", roleName, workflowName, version))
+	sb.WriteString(fmt.Sprintf("Run ID: %s\n", runID))
+	sb.WriteString(fmt.Sprintf("Implemented Node: %d", len(state.Executed)))
 	if len(state.Skipped) > 0 {
-		sb.WriteString(fmt.Sprintf("，跳过节点：%d", len(state.Skipped)))
+		sb.WriteString(fmt.Sprintf(", Skip node: %d", len(state.Skipped)))
 	}
 	sb.WriteString("\n\n")
 	if len(state.Outputs) > 0 {
-		sb.WriteString("输出：\n")
+		sb.WriteString("Output:\n")
 		keys := make([]string, 0, len(state.Outputs))
 		for k := range state.Outputs {
 			keys = append(keys, k)
@@ -203,10 +204,10 @@ func renderWorkflowResponse(roleName, workflowName string, version int, runID st
 			sb.WriteString(fmt.Sprintf("- %s：%v\n", k, state.Outputs[k]))
 		}
 	} else {
-		sb.WriteString("暂无输出。请检查是否配置了输出节点，或条件分支是否命中。\n")
+		sb.WriteString("No output at this time. Check if the output node is configured or if the condition branch hits.\n")
 	}
 	if len(state.Skipped) > 0 {
-		sb.WriteString("\n未执行的节点类型仍会保留运行记录：")
+		sb.WriteString("\nThe non-implemented nodes type will keep running records:")
 		sb.WriteString(strings.Join(state.Skipped, "、"))
 		sb.WriteString("。")
 	}

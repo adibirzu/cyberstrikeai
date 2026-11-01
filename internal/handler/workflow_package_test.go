@@ -98,7 +98,7 @@ func TestWorkflowHandlerGenerateDraft(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(resp.Error, "大模型生成失败") {
+	if !strings.Contains(resp.Error, "Model generation failed") {
 		t.Fatalf("unexpected error: %#v", resp.Error)
 	}
 }

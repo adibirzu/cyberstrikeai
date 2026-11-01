@@ -29,88 +29,88 @@ func RegisterExecutionControlTools(server *Server, external *ExternalMCPManager)
 
 	server.RegisterTool(Tool{
 		Name:             builtin.ToolGetToolExecution,
-		Description:      "查询后台工具 execution 的当前状态、结果和错误。用于外部 MCP 工具等待超时后，凭 execution_id 继续查看进度。",
-		ShortDescription: "查询后台工具执行状态",
+		Description:      "Get the current status, result and error of a background tool execution. Use execution_id to track progress after an external MCP wait times out.",
+		ShortDescription: "Get background tool execution status",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"execution_id":             map[string]interface{}{"type": "string", "description": "工具执行 ID"},
-				"include_partial_output":   map[string]interface{}{"type": "boolean", "description": "是否返回运行中已产生输出的尾部预览，默认 true"},
-				"partial_output_max_bytes": map[string]interface{}{"type": "number", "description": "partial_output 最多返回字节数，默认 4096，最大 65536"},
+				"execution_id":             map[string]interface{}{"type": "string", "description": "Tool execution ID"},
+				"include_partial_output":   map[string]interface{}{"type": "boolean", "description": "Include a tail preview of output already produced while running; default true"},
+				"partial_output_max_bytes": map[string]interface{}{"type": "number", "description": "Maximum partial_output bytes; default 4096, maximum 65536"},
 			},
 			"required": []string{"execution_id"},
 		},
 	}, func(ctx context.Context, args map[string]interface{}) (*ToolResult, error) {
 		id := stringArg(args, "execution_id")
 		if id == "" {
-			return textToolResult("execution_id 必填", true), nil
+			return textToolResult("execution_id is required", true), nil
 		}
 		exec := lookupToolExecution(server, external, id)
 		if exec == nil {
-			return textToolResult("未找到该 execution_id: "+id, true), nil
+			return textToolResult("Execution ID not found: "+id, true), nil
 		}
 		return textToolResult(formatExecutionForModel(exec, executionFormatOptionsFromArgs(args)), false), nil
 	})
 
 	server.RegisterTool(Tool{
 		Name:             builtin.ToolWaitToolExecution,
-		Description:      "继续等待一个后台工具 execution 完成。每次等待都有 timeout_seconds 上限；若仍未完成，会返回当前状态，模型可稍后再次调用。",
-		ShortDescription: "有界等待后台工具执行",
+		Description:      "Wait for a background tool execution to complete. Each wait is bounded by timeout_seconds; if incomplete, returns the current status so the model can wait again later.",
+		ShortDescription: "Wait for background tool execution with a timeout",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"execution_id":             map[string]interface{}{"type": "string", "description": "工具执行 ID"},
-				"timeout_seconds":          map[string]interface{}{"type": "number", "description": "本次最多等待秒数，默认 60，最大 600"},
-				"include_partial_output":   map[string]interface{}{"type": "boolean", "description": "是否返回运行中已产生输出的尾部预览，默认 true"},
-				"partial_output_max_bytes": map[string]interface{}{"type": "number", "description": "partial_output 最多返回字节数，默认 4096，最大 65536"},
+				"execution_id":             map[string]interface{}{"type": "string", "description": "Tool execution ID"},
+				"timeout_seconds":          map[string]interface{}{"type": "number", "description": "Maximum seconds to wait this time; default 60, maximum 600"},
+				"include_partial_output":   map[string]interface{}{"type": "boolean", "description": "Include a tail preview of output already produced while running; default true"},
+				"partial_output_max_bytes": map[string]interface{}{"type": "number", "description": "Maximum partial_output bytes; default 4096, maximum 65536"},
 			},
 			"required": []string{"execution_id"},
 		},
 	}, func(ctx context.Context, args map[string]interface{}) (*ToolResult, error) {
 		id := stringArg(args, "execution_id")
 		if id == "" {
-			return textToolResult("execution_id 必填", true), nil
+			return textToolResult("execution_id is required", true), nil
 		}
 		wait := durationSecondsArg(args, "timeout_seconds", defaultExecutionWaitTimeout, maxExecutionWaitTimeout)
 		snap, err := waitToolExecutionSnapshot(ctx, server, external, id, wait)
 		if err != nil && !errors.Is(err, ErrExecutionWaitTimeout) {
-			return textToolResult("等待 execution 失败: "+err.Error(), true), nil
+			return textToolResult("Failed to wait for execution: "+err.Error(), true), nil
 		}
 		if snap == nil || snap.Execution == nil {
-			return textToolResult("未找到该 execution_id: "+id, true), nil
+			return textToolResult("Execution ID not found: "+id, true), nil
 		}
 		body := formatExecutionForModel(snap.Execution, executionFormatOptionsFromArgs(args))
 		if errors.Is(err, ErrExecutionWaitTimeout) {
-			body += "\n\n本次等待已到达 timeout_seconds，上述 execution 仍未完成。可继续等待、取消，或采用其他步骤。"
+			body += "\n\nThis wait reached timeout_seconds and the execution is still incomplete. You may wait again, cancel it or take another step."
 		}
 		return textToolResult(body, false), nil
 	})
 
 	server.RegisterTool(Tool{
 		Name:             builtin.ToolCancelToolExecution,
-		Description:      "取消一个后台工具 execution。用于外部 MCP 工具长时间运行、误调用或用户要求停止时。",
-		ShortDescription: "取消后台工具执行",
+		Description:      "Cancel a background tool execution, for example when an external MCP tool runs too long, was called by mistake or the user requests a stop.",
+		ShortDescription: "Cancel background tool execution",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"execution_id": map[string]interface{}{"type": "string", "description": "工具执行 ID"},
-				"reason":       map[string]interface{}{"type": "string", "description": "取消原因，可选，会写入终止说明"},
+				"execution_id": map[string]interface{}{"type": "string", "description": "Tool execution ID"},
+				"reason":       map[string]interface{}{"type": "string", "description": "Optional cancellation reason, recorded in the termination note"},
 			},
 			"required": []string{"execution_id"},
 		},
 	}, func(ctx context.Context, args map[string]interface{}) (*ToolResult, error) {
 		id := stringArg(args, "execution_id")
 		if id == "" {
-			return textToolResult("execution_id 必填", true), nil
+			return textToolResult("execution_id is required", true), nil
 		}
 		reason := stringArg(args, "reason")
 		if server.CancelToolExecutionWithNote(id, reason) {
-			return textToolResult("已请求取消内部工具 execution: "+id, false), nil
+			return textToolResult("Cancellation requested for internal tool execution: "+id, false), nil
 		}
 		if external != nil && external.CancelToolExecutionWithNote(id, reason) {
-			return textToolResult("已请求取消外部 MCP execution: "+id, false), nil
+			return textToolResult("Cancellation requested for external MCP execution: "+id, false), nil
 		}
-		return textToolResult("未找到进行中的 execution，或该 execution 已结束: "+id, true), nil
+		return textToolResult("No active execution found, or execution has already ended: "+id, true), nil
 	})
 }
 

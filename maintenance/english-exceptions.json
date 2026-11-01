@@ -1,0 +1,13 @@
+{
+  "policy": "Finite compatibility/data exceptions; never sources of trusted scope, roles, approvals or permissions. Product-generated narrative remains English.",
+  "exceptions": [
+    {"path":"internal/config/role_aliases.go","purpose":"Exact historical bundled role selectors; English resolution/display with exact custom-role precedence; no stored-record rewrite."},
+    {"path":"internal/legacytext/aliases.go","purpose":"Exact historical guard/transcript/placeholder envelopes, command/decision/yes-no tokens, fact-link regexes and factory account label accepted as input only. Consequential actions retain provenance/native authorization."},
+    {"path":"web/static/js/i18n.js","purpose":"LEGACY_BUNDLED_ROLE_NAMES input keys and the exact old factory admin label; English presentation plus catalog-confirmed selector compatibility with exact custom-role precedence; no stored role/account mutation or authority."},
+    {"path":"web/static/js/assets.js","purpose":"ASSET_IMPORT_HEADER_ALIASES and bounded legacy enum/format parsers accept prior exported column/data forms; they do not authorize import or affect native RBAC."},
+    {"path":"knowledge_base/SQL Injection/MySQL Injection.md","codepoint":"U+9023","purpose":"The original GBK 0xDF5C SQL-injection byte example; preserve exact payload semantics, never translate the glyph to an English word."},
+    {"path":"maintenance/vendor-locales/zh-CN.json","purpose":"Archived vendor locale for provenance/inert compatibility fixtures; not served or selected as a runtime locale."}
+  ],
+  "non_product_material": ["Source comments", "Synthetic/historical test fixtures", "Original legal attribution", "README_CN.md and archived vendor documentation under docs/zh-CN"],
+  "preserved_operator_data": ["Custom catalogs and prompts", "Existing conversations/findings/account records", "Target evidence, filenames and external-tool output"]
+}

@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"cyberstrike-ai/internal/legacytext"
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
@@ -80,27 +81,27 @@ type draftToolHint struct {
 }
 
 var draftToolHints = []draftToolHint{
-	{Label: "子域名发现", Keywords: []string{"子域名", "subdomain", "subfinder", "amass"}, Tools: []string{"subfinder", "amass"}},
-	{Label: "端口扫描", Keywords: []string{"端口", "port", "nmap", "rustscan", "masscan"}, Tools: []string{"nmap", "rustscan", "masscan"}},
-	{Label: "漏洞扫描", Keywords: []string{"漏洞", "vuln", "漏洞扫描", "nuclei", "nikto", "zap"}, Tools: []string{"nuclei", "nikto", "zap"}},
-	{Label: "暴露面探测", Keywords: []string{"目录", "路径", "暴露页面", "dir", "ffuf", "gobuster", "feroxbuster"}, Tools: []string{"ffuf", "gobuster", "feroxbuster", "dirsearch"}},
-	{Label: "证书与域名线索收集", Keywords: []string{"证书", "certificate", "crt"}, Tools: []string{"subfinder"}},
-	{Label: "云配置审计", Keywords: []string{"云", "cloud", "配置审计", "prowler", "scout"}, Tools: []string{"prowler", "scout-suite"}},
-	{Label: "容器安全检查", Keywords: []string{"容器", "镜像", "k8s", "kubernetes", "trivy", "kube"}, Tools: []string{"trivy", "kube-bench", "kube-hunter"}},
-	{Label: "威胁情报收集", Keywords: []string{"情报", "威胁情报", "threat", "ioc", "virustotal", "shodan", "fofa"}, Tools: []string{"virustotal_search", "shodan_search", "fofa_search"}},
+	{Label: "Sub-domain Found", Keywords: []string{"Sub-domain Name", "subdomain", "subfinder", "amass"}, Tools: []string{"subfinder", "amass"}},
+	{Label: "Port scan", Keywords: []string{"Port", "port", "nmap", "rustscan", "masscan"}, Tools: []string{"nmap", "rustscan", "masscan"}},
+	{Label: "Hole Scan", Keywords: []string{"Vulnerabilities", "vuln", "Hole Scan", "nuclei", "nikto", "zap"}, Tools: []string{"nuclei", "nikto", "zap"}},
+	{Label: "Exposure detection", Keywords: []string{"Directory", "Path", "Exposure Page", "dir", "ffuf", "gobuster", "feroxbuster"}, Tools: []string{"ffuf", "gobuster", "feroxbuster", "dirsearch"}},
+	{Label: "Certificate and Domain Thread Collection", Keywords: []string{"Certificate", "certificate", "crt"}, Tools: []string{"subfinder"}},
+	{Label: "Cloud Configuration Audit", Keywords: []string{"Clouds", "cloud", "Configuration audit", "prowler", "scout"}, Tools: []string{"prowler", "scout-suite"}},
+	{Label: "Container security checks", Keywords: []string{"Containers", "Mirror", "k8s", "kubernetes", "trivy", "kube"}, Tools: []string{"trivy", "kube-bench", "kube-hunter"}},
+	{Label: "Threat information collection", Keywords: []string{"Information", "Threatening intelligence", "threat", "ioc", "virustotal", "shodan", "fofa"}, Tools: []string{"virustotal_search", "shodan_search", "fofa_search"}},
 }
 
-var highRiskDraftRE = regexp.MustCompile(`(?i)(隔离|封禁|加固|修复|执行|命令|脚本|删除|清理|阻断|封锁|攻击|利用|getshell|shell|payload|exploit|isolate|block|execute|script|delete|exploit|payload)`)
+var highRiskDraftRE = regexp.MustCompile(legacytext.HighRiskDraftPattern)
 
 func GenerateDraftFromNaturalLanguage(ctx context.Context, req DraftRequest) (*DraftResult, error) {
 	prompt := strings.TrimSpace(req.Prompt)
 	if prompt == "" {
-		return nil, fmt.Errorf("工作流需求不能为空")
+		return nil, fmt.Errorf("Workstream demands cannot be empty.")
 	}
 	capabilities := detectDraftCapabilities(prompt, req.AvailableTools)
-	wantsApproval := containsAnyFold(prompt, "审批", "确认", "审核", "负责人", "人工", "review", "approve", "approval", "human")
-	wantsReport := containsAnyFold(prompt, "报告", "汇总", "输出", "通知", "任务", "工单", "report", "summary", "notify", "ticket")
-	wantsCondition := containsAnyFold(prompt, "如果", "发现", "存在", "高危", "新增", "失败", "通过", "否则", "if", "when", "high", "critical", "new", "fail")
+	wantsApproval := containsAnyFold(prompt, "Approval", "Confirm", "Audit", "Owner", "Human", "review", "approve", "approval", "human")
+	wantsReport := containsAnyFold(prompt, "Report", "Summary", "Output", "Notifications", "Tasks", "Worksheets", "report", "summary", "notify", "ticket")
+	wantsCondition := containsAnyFold(prompt, "If...", "Found", "Existence", "High", "New", "Failed", "Valid", "Otherwise...", "if", "when", "high", "critical", "new", "fail")
 	highRisk := highRiskDraftRE.MatchString(prompt)
 
 	builder := &draftGraphBuilder{x: 120, y: 150}
@@ -108,7 +109,7 @@ func GenerateDraftFromNaturalLanguage(ctx context.Context, req DraftRequest) (*D
 	riskWarnings := make([]string, 0)
 	missingFields := make([]string, 0)
 
-	start := builder.add("start", "开始", map[string]any{"input_keys": "message, conversationId, projectId, target"}, 0)
+	start := builder.add("start", "Start", map[string]any{"input_keys": "message, conversationId, projectId, target"}, 0)
 	previous := start
 	for _, capability := range capabilities {
 		hasTool := strings.TrimSpace(capability.ToolName) != ""
@@ -124,14 +125,14 @@ func GenerateDraftFromNaturalLanguage(ctx context.Context, req DraftRequest) (*D
 			id = builder.add("agent", capability.Label, map[string]any{
 				"agent_mode":              "eino_single",
 				"input_binding":           map[string]any{"from": "previous", "field": "output"},
-				"instruction":             capability.Label + "。根据用户需求执行安全流程步骤，并输出结构化结果：" + prompt,
+				"instruction":             capability.Label + ". Implement the security process steps according to user needs and output the structured results:" + prompt,
 				"output_key":              "agent_result",
 				"join_strategy":           "all_merge",
 				"missing_tool_candidates": strings.Join(capability.ToolCandidates, ", "),
 			}, 0)
 			if len(capability.ToolCandidates) > 0 {
-				assumptions = append(assumptions, capability.Label+" 未匹配到已启用工具，已生成 Agent 草稿节点。")
-				missingFields = append(missingFields, capability.Label+": 选择或启用对应 MCP 工具")
+				assumptions = append(assumptions, capability.Label+" Cannot match the enabled tool to generate the Agent draft node.")
+				missingFields = append(missingFields, capability.Label+": select or enable corresponding MCP tools")
 			}
 		}
 		builder.connect(previous, id, "", nil)
@@ -141,10 +142,10 @@ func GenerateDraftFromNaturalLanguage(ctx context.Context, req DraftRequest) (*D
 	openConditionID := ""
 	if wantsCondition {
 		expr := `{{previous.output}} != ""`
-		label := "是否满足触发条件"
+		label := "Whether the trigger condition is met"
 		if highRisk {
-			expr = `{{previous.output}} contains "高危"`
-			label = "是否需要高风险处置"
+			expr = `{{previous.output}} contains "High risk"`
+			label = "Need for high-risk disposal"
 		}
 		condition := builder.add("condition", label, map[string]any{"expression": expr, "join_strategy": "all_merge"}, 0)
 		builder.connect(previous, condition, "", nil)
@@ -155,15 +156,15 @@ func GenerateDraftFromNaturalLanguage(ctx context.Context, req DraftRequest) (*D
 			"static_value":   "",
 			"join_strategy":  "all_merge",
 		}, 130)
-		builder.connect(condition, report, "否", map[string]any{"condition": `{{previous.matched}} == "false"`, "branch": "false"})
+		builder.connect(condition, report, "No", map[string]any{"condition": `{{previous.matched}} == "false"`, "branch": "false"})
 		previous = condition
 	}
 
 	insertedHITL := false
 	if highRisk {
 		if !req.Options.AllowHighRisk || wantsApproval {
-			approval := builder.add("hitl", "人工审批", map[string]any{
-				"prompt":         "请确认是否允许继续执行高风险处置：" + prompt,
+			approval := builder.add("hitl", "Human approval", map[string]any{
+				"prompt":         "Please confirm whether high-risk disposal is allowed to continue:" + prompt,
 				"prompt_binding": map[string]any{"from": "previous", "field": "output"},
 				"reviewer":       "human",
 				"join_strategy":  "all_merge",
@@ -176,10 +177,10 @@ func GenerateDraftFromNaturalLanguage(ctx context.Context, req DraftRequest) (*D
 			previous = approval
 			insertedHITL = true
 		}
-		action := builder.add("agent", "执行受控处置", map[string]any{
+		action := builder.add("agent", "Execute controlled disposal", map[string]any{
 			"agent_mode":                  "eino_single",
 			"input_binding":               map[string]any{"from": "previous", "field": "output"},
-			"instruction":                 "仅在授权范围内生成处置步骤草稿；实际执行前必须由人工确认。用户需求：" + prompt,
+			"instruction":                 "The draft disposal step is generated only within the delegated authority; it must be manually confirmed before actual implementation." + prompt,
 			"output_key":                  "remediation_plan",
 			"join_strategy":               "all_merge",
 			"risk_level":                  "high",
@@ -191,13 +192,13 @@ func GenerateDraftFromNaturalLanguage(ctx context.Context, req DraftRequest) (*D
 		}
 		previous = action
 		if insertedHITL {
-			riskWarnings = append(riskWarnings, "检测到高风险动作，已加入人工审批与 requires_human_confirmation 标记。")
+			riskWarnings = append(riskWarnings, "High-risk movement detected., Manual approval and approval requires_human_confirmation Tag.")
 		} else {
-			riskWarnings = append(riskWarnings, "检测到高风险动作，已保留为草稿并添加 requires_human_confirmation 标记。")
+			riskWarnings = append(riskWarnings, "High-risk movement detected., Saved as draft and added requires_human_confirmation Tag.")
 		}
 	} else if wantsApproval {
-		approval := builder.add("hitl", "人工审批", map[string]any{
-			"prompt":         "请审核工作流阶段结果：" + prompt,
+		approval := builder.add("hitl", "Human approval", map[string]any{
+			"prompt":         "Please review the results of the workflow phase:" + prompt,
 			"prompt_binding": map[string]any{"from": "previous", "field": "output"},
 			"reviewer":       "human",
 			"join_strategy":  "all_merge",
@@ -223,13 +224,13 @@ func GenerateDraftFromNaturalLanguage(ctx context.Context, req DraftRequest) (*D
 	if req.Options.IncludeObjective {
 		graph.Config["objective"] = prompt
 	}
-	if req.Options.AllowSchedule && containsAnyFold(prompt, "每天", "每周", "定时", "周期", "持续", "daily", "weekly", "schedule", "monitor") {
-		if containsAnyFold(prompt, "每天", "daily") {
+	if req.Options.AllowSchedule && containsAnyFold(prompt, "Chile", "Weekly", "Time", "Cycle", "Ongoing", "daily", "weekly", "schedule", "monitor") {
+		if containsAnyFold(prompt, "Chile", "daily") {
 			graph.Config["trigger_suggestion"] = "daily"
 		} else {
 			graph.Config["trigger_suggestion"] = "scheduled"
 		}
-		assumptions = append(assumptions, "已记录定时触发建议；保存后仍需在触发器或角色绑定处配置。")
+		assumptions = append(assumptions, "The time-trigger proposal has been recorded; after preservation, it will still need to be configured at the trigger or role binding.")
 	}
 
 	raw, _ := json.Marshal(graph)
@@ -258,10 +259,10 @@ func GenerateDraftFromNaturalLanguage(ctx context.Context, req DraftRequest) (*D
 func GenerateDraftFromLLM(ctx context.Context, req DraftRequest, oa config.OpenAIConfig, logger *zap.Logger) (*DraftResult, error) {
 	prompt := strings.TrimSpace(req.Prompt)
 	if prompt == "" {
-		return nil, fmt.Errorf("工作流需求不能为空")
+		return nil, fmt.Errorf("Workstream demands cannot be empty.")
 	}
 	if strings.TrimSpace(oa.APIKey) == "" || strings.TrimSpace(oa.Model) == "" {
-		return nil, fmt.Errorf("AI 通道未配置 api_key 或 model")
+		return nil, fmt.Errorf("AI channel not configured api_key or model")
 	}
 	if logger == nil {
 		logger = zap.NewNop()
@@ -269,34 +270,34 @@ func GenerateDraftFromLLM(ctx context.Context, req DraftRequest, oa config.OpenA
 	callCtx, cancel := context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
 	toolJSON, _ := json.Marshal(req.AvailableTools)
-	systemPrompt := `你是 CyberStrikeAI 的工作流编排助手。你必须把用户的一句话需求转换为可保存的工作流草稿 JSON。
-只返回 JSON 对象，不要 Markdown，不要解释。JSON 必须符合：
+	systemPrompt := `You are. CyberStrikeAI Workstream development assistant.You have to convert a user's sentence to a saveable working stream draft. JSON.
+Only return the JSON object, do not Markdown, do not explain. JSON must meet:
 {
-  "meta": {"id":"kebab-case-id","name":"短名称","description":"用户需求","enabled":true},
+  "meta": {"id":"kebab-case-id","name":"Short Name","description":"User Needs","enabled":true},
 	"graph": {
-    "nodes": [{"id":"start-1","type":"start","label":"显示名","position":{"x":120,"y":150},"config":{}}],
+    "nodes": [{"id":"start-1","type":"start","label":"Display Name","position":{"x":120,"y":150},"config":{}}],
     "edges": [{"id":"edge-1","source":"start-1","target":"node-2","label":"","config":{}}],
-    "config": {"schema_version":1,"generated_by":"llm","source_prompt":"用户原文"}
+    "config": "schema_version": 1, "generated_by": "llm", "source_prompt": "user original"
   },
-  "capabilities": [{"label":"能力名","tool_name":"已匹配工具名","tool_candidates":["候选工具"]}],
+  "capabilities": [{"label" : "Capacity" , "tool_name" : "Compatible Tool" , "tool_candidates" : ["Selection Tool")],
   "audit": {"assumptions":[],"missing_fields":[],"risk_warnings":[]}
 }
-硬性规则：
-- 只能输出一个合法 JSON object；不要输出 JSON Schema、注释、解释文字、Markdown 代码块或多余前后缀。
-- 不要在 JSON 字符串值中使用竖线枚举写法；type 字段一次只能填写一个节点类型字符串。
-- 至少 1 个 start 和 1 个 output；output/end 不能有出边。
-- 节点 type 只能从这些字符串中选择：start、tool、agent、condition、hitl、output、end。
-- 每个 agent、tool、output 节点都必须配置唯一的 output_key；output 节点默认使用 result。
-- agent 节点必须配置 instruction 或 input_binding；默认 input_binding 为 {"from":"previous","field":"output"}。
-- output 节点必须配置 source_binding 或 static_value；默认 source_binding 为 {"from":"previous","field":"output"}。
-- tool 节点必须配置 tool_name、arguments、timeout_seconds；arguments 必须是合法 JSON 字符串。
-- 所有非 start 且可能有多个上游的节点必须配置 join_strategy:"all_merge"。
-- condition 最多 2 条出边，必须用 branch true/false，并用 label 是/否。
-- tool 节点只有在 available_tools 中存在启用工具时才使用，否则用 agent 节点并在 audit.missing_fields 写明缺失工具。
-- 高风险动作（执行脚本、隔离、封禁、删除、利用、payload、命令执行等）必须加入 hitl 审批，或在高风险节点 config 中标记 requires_human_confirmation:"true"、risk_level:"high"。
-- 不要生成会真实执行攻击的参数；工具参数使用 {{inputs.target}}、{{inputs.message}} 占位。
-- 所有节点 config 加 generated_by:"llm" 和 needs_review:"true"。`
-	userPrompt := fmt.Sprintf("用户需求：%s\n\n选项：%+v\n\n可用工具 JSON：%s", prompt, req.Options, string(toolJSON))
+Mandatory rules:
+- Only one valid JSON object can be exported; no JSON Schema, notes, explanatory text, Markdown code block or redundant prefix should be exported.
+- Not here. JSON A string value using vertical billing; type Fields can only fill one node type string at a time.
+- At least. 1 items start and 1 items output; output/end There's no way out..
+- Nodes type Only select from these strings: start, tool, agent, condition, hitl, output, end.
+- Each agent, tool, output All nodes must be configured for the only output_key; output Default use of nodes result.
+- agent Node must be configured instruction or input_binding; Default input_binding for {"from":"previous","field":"output"}.
+- output Node must be configured source_binding or static_value; Default source_binding for {"from":"previous","field":"output"}.
+- tool Node must be configured tool_name, arguments, timeout_seconds; arguments It has to be legal. JSON String.
+- All nonstart and possibly multiple upstream nodes must be configured join_strategy: "all_merge".
+- condition at most 2 Out of the way., It has to be used. branch true/false, Use both label is/no.
+- tool Node only available_tools Use when a enabled tool exists, Or else. agent Node and audit.missing_fields Write Missing Tools.
+- High-risk action. (Execute Script, Segregation, Ban, delete, Utilization, payload, Order execution, etc.) I have to. hitl Approval, Or at high-risk nodes. config Middle Tag requires_human_confirmation:"true", risk_level:"high".
+- Do not create parameters that would actually execute the attack.; Use of tool parameters {{inputs.target}}, {{inputs.message}} Position..
+- All Nodes config Add generated_by:"llm" and needs_review:"true".`
+	userPrompt := fmt.Sprintf("User demand: %s\n\nOptions: %+v\n\nAvailable ToolsJSON: %s", prompt, req.Options, string(toolJSON))
 	requestBody := map[string]interface{}{
 		"model": strings.TrimSpace(oa.Model),
 		"messages": []map[string]interface{}{
@@ -318,10 +319,10 @@ func GenerateDraftFromLLM(ctx context.Context, req DraftRequest, oa config.OpenA
 	}
 	client := openai.NewClient(&oa, nil, logger)
 	if err := client.ChatCompletion(callCtx, requestBody, &apiResponse); err != nil {
-		return nil, fmt.Errorf("调用大模型失败: %w", err)
+		return nil, fmt.Errorf("Failed to call large model: %w", err)
 	}
 	if len(apiResponse.Choices) == 0 {
-		return nil, fmt.Errorf("大模型未返回候选结果")
+		return nil, fmt.Errorf("Large model does not return candidate results")
 	}
 	raw := strings.TrimSpace(apiResponse.Choices[0].Message.Content)
 	if raw == "" {
@@ -340,7 +341,7 @@ func GenerateDraftFromLLM(ctx context.Context, req DraftRequest, oa config.OpenA
 	result.Audit.Validation = validation
 	result.Audit.Savable = len(validation) == 0
 	if !result.Audit.Savable {
-		return nil, fmt.Errorf("大模型生成的工作流未通过校验: %s", strings.Join(validation, "；"))
+		return nil, fmt.Errorf("Workstreams generated by large models are not verified: %s", strings.Join(validation, "；"))
 	}
 	return result, nil
 }
@@ -387,7 +388,7 @@ func parseLLMDraftEnvelope(raw string) (llmDraftEnvelope, error) {
 		var env llmDraftEnvelope
 		if err := json.Unmarshal([]byte(candidate), &env); err == nil {
 			if len(env.Graph.Nodes) == 0 {
-				lastErr = fmt.Errorf("大模型 JSON 缺少 graph.nodes")
+				lastErr = fmt.Errorf("Large model JSON missing graph.nodes")
 				continue
 			}
 			return env, nil
@@ -396,9 +397,9 @@ func parseLLMDraftEnvelope(raw string) (llmDraftEnvelope, error) {
 		}
 	}
 	if lastErr == nil {
-		lastErr = fmt.Errorf("大模型响应为空")
+		lastErr = fmt.Errorf("Large model response is empty")
 	}
-	return llmDraftEnvelope{}, fmt.Errorf("解析大模型工作流 JSON 失败: %w", lastErr)
+	return llmDraftEnvelope{}, fmt.Errorf("Failed to parse model-generated workflow JSON: %w", lastErr)
 }
 
 func jsonObjectCandidates(raw string) []string {
@@ -466,10 +467,10 @@ func normalizeLLMDraft(prompt string, req DraftRequest, env llmDraftEnvelope) *D
 	audit.HighRisk = highRisk
 	audit.NeedsHITL = graphHasNodeType(g, "hitl")
 	if highRisk && !audit.NeedsHITL && !graphHasConfirmation(g) {
-		audit.RiskWarnings = append(audit.RiskWarnings, "大模型生成包含高风险语义，请补充人工审批或确认标记后再运行。")
+		audit.RiskWarnings = append(audit.RiskWarnings, "Large model generation contains high-risk semantics, and please add manual approval or confirmation of tags before running.")
 	}
 	if len(audit.RiskWarnings) == 0 && highRisk {
-		audit.RiskWarnings = append(audit.RiskWarnings, "检测到高风险动作，已标记为需要重点审计。")
+		audit.RiskWarnings = append(audit.RiskWarnings, "High-risk actions detected have been marked as requiring focused audits.")
 	}
 	meta := env.Meta
 	if strings.TrimSpace(meta.Description) == "" {
@@ -501,10 +502,10 @@ func normalizeLLMEdgeConfig(edge *graphEdge, nodeTypes map[string]string, condit
 	}
 	conditionBranchCounts[edge.Source]++
 	branch := "true"
-	label := "是"
+	label := "Yes"
 	if conditionBranchCounts[edge.Source] > 1 {
 		branch = "false"
-		label = "否"
+		label = "No"
 	}
 	edge.Label = label
 	edge.Config["branch"] = branch
@@ -542,7 +543,7 @@ func normalizeLLMNodeConfig(prompt string, node *graphNode, enabledTools map[str
 		ensureJoinStrategy(node)
 	case "hitl":
 		if cfgString(node.Config, "prompt") == "" {
-			node.Config["prompt"] = "请审核工作流阶段结果：" + prompt
+			node.Config["prompt"] = "Please review the results of the workflow phase:" + prompt
 		}
 		if cfgString(node.Config, "reviewer") == "" {
 			node.Config["reviewer"] = "human"
@@ -566,7 +567,7 @@ func normalizeAgentDraftConfig(prompt string, node *graphNode, usedOutputKeys ma
 		node.Config["agent_mode"] = "eino_single"
 	}
 	if cfgString(node.Config, "instruction") == "" {
-		node.Config["instruction"] = node.Label + "。根据用户需求执行安全流程步骤，并输出结构化结果：" + prompt
+		node.Config["instruction"] = node.Label + ". Implement the security process steps according to user needs and output the structured results:" + prompt
 	}
 	if _, ok := parseFieldBinding(node.Config, "input_binding"); !ok {
 		node.Config["input_binding"] = map[string]any{"from": "previous", "field": "output"}
@@ -683,7 +684,7 @@ func detectDraftCapabilities(prompt string, tools []DraftTool) []DraftCapability
 		}
 	}
 	if len(capabilities) == 0 {
-		capabilities = append(capabilities, DraftCapability{Label: "节点能力", ToolCandidates: nil})
+		capabilities = append(capabilities, DraftCapability{Label: "Node capabilities", ToolCandidates: nil})
 	}
 	return capabilities
 }
@@ -712,7 +713,7 @@ func matchDraftTool(candidates []string, tools []DraftTool) string {
 func containsAnyFold(text string, needles ...string) bool {
 	lower := strings.ToLower(text)
 	for _, needle := range needles {
-		if strings.Contains(lower, strings.ToLower(needle)) {
+		if legacytext.Contains(lower, strings.ToLower(needle)) {
 			return true
 		}
 	}
@@ -721,14 +722,14 @@ func containsAnyFold(text string, needles ...string) bool {
 
 func draftOutputLabel(wantsReport bool) string {
 	if wantsReport {
-		return "输出报告"
+		return "Output Report"
 	}
-	return "输出"
+	return "Output"
 }
 
 func branchLabel(source, conditionID string) string {
 	if source == conditionID && conditionID != "" {
-		return "是"
+		return "Yes"
 	}
 	return ""
 }

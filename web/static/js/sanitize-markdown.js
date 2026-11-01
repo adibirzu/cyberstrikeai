@@ -121,7 +121,7 @@
             marked.setOptions({ breaks: true, gfm: true });
             return marked.parse(src, { async: false });
         } catch (e) {
-            console.error('Markdown 解析失败:', e);
+            console.error('Markdown parsing failed:', e);
             return null;
         }
     }
@@ -161,7 +161,7 @@
         }
 
         if (typeof DOMPurify === 'undefined') {
-            console.warn('DOMPurify 未加载，Markdown 已降级为纯文本渲染（已转义，防 XSS）');
+            console.warn('DOMPurify Unmounted, Markdown downgraded to plain text rendering (Transferred, Prevention XSS) ');
             return escapePlainTextAsHtml(src);
         }
 

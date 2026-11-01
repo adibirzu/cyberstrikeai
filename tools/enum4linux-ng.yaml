@@ -1,85 +1,66 @@
 name: "enum4linux-ng"
 command: "enum4linux-ng"
 enabled: true
-short_description: "高级SMB枚举工具（Enum4linux的下一代版本）"
+short_description: "Enumerate SMB hosts, users, groups, shares and policy"
 description: |
-  Enum4linux-ng是Enum4linux的下一代版本，提供更强大的SMB枚举功能。
+  Enumerate SMB hosts, users, groups, shares and policy.
 
-  **主要功能：**
-  - SMB共享枚举
-  - 用户和组枚举
-  - 策略枚举
-  - 系统信息收集
-
-  **使用场景：**
-  - Windows系统渗透测试
-  - SMB安全评估
-  - 域环境侦察
-  - 安全测试
+  Use the parameters below to select the target and native options. Additional native arguments are supported where exposed by this recipe.
 parameters:
   - name: "target"
     type: "string"
-    description: "目标IP地址"
+    description: "Target host, address or resource accepted by this tool."
     required: true
     position: 0
     format: "positional"
   - name: "username"
     type: "string"
-    description: "用户名"
+    description: "Username to use. Native option: -u."
     required: false
     flag: "-u"
     format: "flag"
   - name: "password"
     type: "string"
-    description: "密码"
+    description: "Password to use. Native option: -p."
     required: false
     flag: "-p"
     format: "flag"
   - name: "domain"
     type: "string"
-    description: "域名"
+    description: "Target domain name. Native option: -d."
     required: false
     flag: "-d"
     format: "flag"
   - name: "shares"
     type: "bool"
-    description: "枚举共享"
+    description: "Enumerate shares. Native option: -S. Default: true."
     required: false
     flag: "-S"
     format: "flag"
     default: true
   - name: "users"
     type: "bool"
-    description: "枚举用户"
+    description: "Enumerate users. Native option: -U. Default: true."
     required: false
     flag: "-U"
     format: "flag"
     default: true
   - name: "groups"
     type: "bool"
-    description: "枚举组"
+    description: "Enumerate groups. Native option: -G. Default: true."
     required: false
     flag: "-G"
     format: "flag"
     default: true
   - name: "policy"
     type: "bool"
-    description: "枚举策略"
+    description: "Enumerate security policy. Native option: -P. Default: true."
     required: false
     flag: "-P"
     format: "flag"
     default: true
   - name: "additional_args"
     type: "string"
-    description: |
-      额外的enum4linux-ng参数。用于传递未在参数列表中定义的enum4linux-ng选项。
-
-      **示例值：**
-      - 根据工具特性添加常用参数示例
-
-      **注意事项：**
-      - 多个参数用空格分隔
-      - 确保参数格式正确，避免命令注入
-      - 此参数会直接追加到命令末尾
+    description: "Additional native command-line arguments, appended according to this recipe."
     required: false
     format: "positional"

@@ -110,7 +110,7 @@ func TestToolResultStatusFromPayloadDistinguishesBlocked(t *testing.T) {
 	}{
 		{map[string]interface{}{"blocked": true, "success": false, "isError": true}, "blocked"},
 		{map[string]interface{}{"status": "blocked", "success": false}, "blocked"},
-		{map[string]interface{}{"success": false, "isError": true, "result": "工具调用已被安全规则拦截"}, "failed"},
+		{map[string]interface{}{"success": false, "isError": true, "result": "Tool call has been intercepted by security rules."}, "failed"},
 		{map[string]interface{}{"success": true}, "completed"},
 	} {
 		if got := toolResultStatusFromPayload(tc.payload, "tool_result"); got != tc.want {

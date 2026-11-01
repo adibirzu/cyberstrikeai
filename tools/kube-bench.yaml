@@ -1,58 +1,39 @@
 name: "kube-bench"
 command: "kube-bench"
 enabled: true
-short_description: "CIS Kubernetes基准检查工具"
+short_description: "Check Kubernetes configuration against CIS benchmarks"
 description: |
-  Kube-bench是一个CIS Kubernetes基准检查工具，用于检查Kubernetes集群是否符合CIS基准。
+  Check Kubernetes configuration against CIS benchmarks.
 
-  **主要功能：**
-  - CIS基准检查
-  - 多种目标支持（master, node, etcd, policies）
-  - 详细报告
-  - 配置验证
-
-  **使用场景：**
-  - Kubernetes合规性检查
-  - 安全配置审计
-  - CIS基准验证
-  - 安全评估
+  Use the parameters below to select the target and native options. Additional native arguments are supported where exposed by this recipe.
 parameters:
   - name: "targets"
     type: "string"
-    description: "要检查的目标（master, node, etcd, policies）"
+    description: "Benchmark components to check, such as master, node, etcd or policies. Native option: --targets."
     required: false
     flag: "--targets"
     format: "flag"
   - name: "version"
     type: "string"
-    description: "Kubernetes版本"
+    description: "Target product or benchmark version. Native option: --version."
     required: false
     flag: "--version"
     format: "flag"
   - name: "config_dir"
     type: "string"
-    description: "配置目录"
+    description: "Configuration directory. Native option: --config-dir."
     required: false
     flag: "--config-dir"
     format: "flag"
   - name: "output_format"
     type: "string"
-    description: "输出格式（json, yaml）"
+    description: "Output format. Native option: --output. Default: json."
     required: false
     flag: "--output"
     format: "flag"
     default: "json"
   - name: "additional_args"
     type: "string"
-    description: |
-      额外的kube-bench参数。用于传递未在参数列表中定义的kube-bench选项。
-
-      **示例值：**
-      - 根据工具特性添加常用参数示例
-
-      **注意事项：**
-      - 多个参数用空格分隔
-      - 确保参数格式正确，避免命令注入
-      - 此参数会直接追加到命令末尾
+    description: "Additional native command-line arguments, appended according to this recipe."
     required: false
     format: "positional"

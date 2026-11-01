@@ -32,14 +32,14 @@
         }
         // i18n 未就绪时的后备（与 zh-CN 一致）
         var fallbacks = {
-            'settingsTerminal.welcomeLine': 'CyberStrikeAI 终端 - 真实 Shell 会话，直接输入命令；Ctrl+L 清屏',
-            'settingsTerminal.sessionClosed': '[会话已关闭]',
-            'settingsTerminal.connectionError': '[终端连接出错]',
-            'settingsTerminal.connectFailed': '[无法连接终端服务: {{msg}}]',
-            'settingsTerminal.closeTabTitle': '关闭',
-            'settingsTerminal.containerClickTitle': '点击此处后输入命令',
-            'settingsTerminal.xtermNotLoaded': '未加载 xterm.js，请刷新页面或检查网络。',
-            'settingsTerminal.terminalTab': '终端 {{n}}'
+            'settingsTerminal.welcomeLine': 'CyberStrikeAI Terminal — real shell session; type commands directly. Ctrl+L to clear screen',
+            'settingsTerminal.sessionClosed': '[Session closed]',
+            'settingsTerminal.connectionError': '[Terminal connection error]',
+            'settingsTerminal.connectFailed': '[Cannot connect to terminal service: {{msg}}]',
+            'settingsTerminal.closeTabTitle': 'Off',
+            'settingsTerminal.containerClickTitle': 'Click here, then type commands',
+            'settingsTerminal.xtermNotLoaded': 'xterm.js failed to load. Refresh the page or check your network.',
+            'settingsTerminal.terminalTab': 'Terminal {{n}}'
         };
         var s = fallbacks[key] || key;
         if (opts && typeof opts === 'object') {

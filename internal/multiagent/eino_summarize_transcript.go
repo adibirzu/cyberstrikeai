@@ -3,6 +3,8 @@ package multiagent
 import (
 	"strings"
 
+	"cyberstrike-ai/internal/legacytext"
+
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/schema"
 
@@ -18,10 +20,10 @@ const (
 
 `
 	transcriptStaticSystemOmitNote = "[static system prompt omitted — unchanged in live context after compaction]"
-	transcriptToolIndexStartMarker = "以下是当前会话绑定的工具名称索引"
-	transcriptPersonaStartMarker   = "你是CyberStrikeAI"
-	// ADK LanguageChinese injects skill middleware prompt with this header (see eino adk/middlewares/skill/prompt.go).
-	transcriptSkillsSystemMarker        = "# Skill 系统"
+	transcriptToolIndexStartMarker = "Below is the index of the current session bound by the title of the tool"
+	transcriptPersonaStartMarker   = "You are CyberStrikeAI"
+	// Keep both legacy and current English skill boilerplate headers for persisted transcripts.
+	transcriptSkillsSystemMarker        = "# Skill System"
 	transcriptSkillsSystemMarkerEnglish = "# Skills System"
 )
 
@@ -94,10 +96,14 @@ func sanitizeSystemContentForTranscript(content string) string {
 }
 
 func stripToolNamesIndexFromSystem(s string) string {
-	if !strings.Contains(s, transcriptToolIndexStartMarker) {
+	if !legacytext.Contains(s, transcriptToolIndexStartMarker) {
 		return s
 	}
-	idx := strings.Index(s, transcriptPersonaStartMarker)
+	before, _, found := legacytext.Cut(s, transcriptPersonaStartMarker)
+	idx := len(before)
+	if !found {
+		idx = -1
+	}
 	if idx < 0 {
 		return s
 	}
@@ -115,8 +121,8 @@ func stripSkillsSystemBoilerplate(s string) string {
 func indexFirstSubstring(s string, markers ...string) int {
 	first := -1
 	for _, m := range markers {
-		if i := strings.Index(s, m); i >= 0 && (first < 0 || i < first) {
-			first = i
+		if before, _, ok := legacytext.Cut(s, m); ok && (first < 0 || len(before) < first) {
+			first = len(before)
 		}
 	}
 	return first

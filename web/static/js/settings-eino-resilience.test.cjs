@@ -6,7 +6,7 @@ const path = require('node:path');
 const root = process.cwd();
 const settings = fs.readFileSync(path.join(root, 'web/static/js/settings.js'), 'utf8');
 const template = fs.readFileSync(path.join(root, 'web/templates/index.html'), 'utf8');
-const zh = JSON.parse(fs.readFileSync(path.join(root, 'web/static/i18n/zh-CN.json'), 'utf8'));
+const zh = JSON.parse(fs.readFileSync(path.join(root, 'maintenance/vendor-locales/zh-CN.json'), 'utf8'));
 const en = JSON.parse(fs.readFileSync(path.join(root, 'web/static/i18n/en-US.json'), 'utf8'));
 
 test('Eino 模型 retry/failover 设置页读写链路完整', () => {

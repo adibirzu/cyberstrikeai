@@ -1,5 +1,35 @@
 // 前端国际化初始化（基于 i18next 浏览器版本）
 (function () {
+    // Exact historical bundled identifiers are compatibility input only.
+    // They never create a role, identity, approval or native permission.
+    const LEGACY_BUNDLED_ROLE_NAMES = Object.freeze({
+        '默认': 'Default', '二进制分析': 'Binary Analysis', '数字取证': 'Digital Forensics',
+        '云安全审计': 'Cloud Security Audit', '综合漏洞扫描': 'Comprehensive Vulnerability Scan',
+        '渗透测试': 'Penetration Testing', '信息收集': 'Information Gathering',
+        '容器安全': 'Container Security', '后渗透测试': 'Post-exploitation Testing',
+        'Web框架测试': 'Web Framework Testing', 'Web应用扫描': 'Web Application Scan',
+        'API安全测试': 'API Security Testing'
+    });
+    window.englishBundledRoleName = function (name, catalog) {
+        const value = String(name || '');
+        // An exact operator-defined role always takes precedence.
+        if (Array.isArray(catalog) && catalog.some(role => role.name === value)) return value;
+        return LEGACY_BUNDLED_ROLE_NAMES[value] || value;
+    };
+    // Selectors are machine input: resolve only against a successfully loaded
+    // catalog, and never change an exact operator-defined role.
+    window.resolveBundledRoleSelector = function (name, catalog) {
+        const value = String(name || '');
+        if (!Array.isArray(catalog) || catalog.some(role => role && role.name === value)) return value;
+        const alias = LEGACY_BUNDLED_ROLE_NAMES[value];
+        return alias && catalog.some(role => role && role.name === alias) ? alias : value;
+    };
+    window.englishFactoryAccountName = function (user) {
+        if (!user) return '';
+        const display = String(user.display_name || user.displayName || user.username || '').trim();
+        return user.id === 'admin' && user.username === 'admin' && display === '管理员'
+            ? 'Administrator' : display;
+    };
     const DEFAULT_LANG = 'en-US';
     const STORAGE_KEY = 'csai_lang';
     const RESOURCES_PREFIX = '/static/i18n';
@@ -12,30 +42,14 @@
         i18nReadyResolve = resolve;
     });
 
+    // This maintained fork has one operational language. Stored preferences and
+    // browser locale must not re-enable untranslated vendor runtime text.
     function detectInitialLang() {
-        try {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-                return stored;
-            }
-        } catch (e) {
-            console.warn('无法读取语言设置:', e);
-        }
-
-        const navLang = (navigator.language || navigator.userLanguage || '').toLowerCase();
-        if (navLang.startsWith('zh')) {
-            return 'zh-CN';
-        }
-        if (navLang.startsWith('ru')) {
-            return 'ru-RU';
-        }
-        if (navLang.startsWith('en')) {
-            return 'en-US';
-        }
-        return 'en-US';
+        return DEFAULT_LANG;
     }
 
     async function loadLanguageResources(lang) {
+        lang = DEFAULT_LANG;
         if (loadedLangs[lang]) {
             return;
         }
@@ -44,7 +58,7 @@
                 cache: 'no-cache'
             });
             if (!resp.ok) {
-                console.warn('加载语言包失败:', lang, resp.status);
+                console.warn('Failed to load language package:', lang, resp.status);
                 return;
             }
             const data = await resp.json();
@@ -53,7 +67,7 @@
             }
             loadedLangs[lang] = true;
         } catch (e) {
-            console.error('加载语言包异常:', lang, e);
+            console.error('Loading language package abnormal:', lang, e);
         }
     }
 
@@ -155,6 +169,7 @@
     }
 
     async function changeLanguage(lang) {
+        lang = DEFAULT_LANG;
         if (typeof i18next === 'undefined') return;
         const current = i18next.language || DEFAULT_LANG;
         if (lang === current) return;
@@ -166,7 +181,7 @@
         try {
             localStorage.setItem(STORAGE_KEY, lang);
         } catch (e) {
-            console.warn('无法保存语言设置:', e);
+            console.warn('Cannot save language settings:', e);
         }
         applyTranslations(document);
         updateLangLabel();
@@ -183,7 +198,7 @@
 
     async function initI18n() {
         if (typeof i18next === 'undefined') {
-            console.warn('i18next 未加载，跳过前端国际化初始化');
+            console.warn('i18next Unmounted, Initialize Internationalization Skip Frontend');
             if (typeof i18nReadyResolve === 'function') i18nReadyResolve();
             return;
         }
@@ -192,7 +207,7 @@
         await i18next.init({
             lng: initialLang,
             fallbackLng: {
-                'ru-RU': ['en-US', 'zh-CN'],
+                'ru-RU': ['en-US'],
                 'default': [DEFAULT_LANG]
             },
             debug: false,
@@ -218,10 +233,7 @@
             return i18next.t(key, opts);
         };
         window.uiLocale = function () {
-            const lang = String((window.__locale || (typeof i18next !== 'undefined' && i18next.language) || '')).toLowerCase();
-            if (lang.indexOf('zh') === 0) return 'zh-CN';
-            if (lang.indexOf('ru') === 0) return 'ru-RU';
-            return 'en-US';
+            return DEFAULT_LANG;
         };
         window.changeLanguage = changeLanguage;
         window.applyTranslations = applyTranslations;
@@ -256,7 +268,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         // i18n 初始化在 DOM Ready 后执行
         initI18n().catch(function (e) {
-            console.error('初始化国际化失败:', e);
+            console.error('Initialization of internationalization failed:', e);
             if (typeof i18nReadyResolve === 'function') i18nReadyResolve();
         });
     });

@@ -1,13 +1,13 @@
-# 引用与外链（示例）
+# Quote with extra chain (example)
 
-本文件用于验证技能包内 **`references/`** 目录是否被列表 API、HTTP `resource_path` 及多代理本机文件工具正常识别。
+This document is used to validate skills packages **`references/`** Whether directories are listed API, HTTP `resource_path` and multiple proxy file tools are properly identified.
 
-## 测试方式（授权环境内）
+## Test Method (Within Authorized Environments)
 
-1. `GET /api/skills/cyberstrike-eino-demo` 响应中的 `package_files` 应包含 `references/citations.md`。
-2. `GET /api/skills/cyberstrike-eino-demo?resource_path=references/citations.md` 应返回本文内容。
-3. 多代理且开启 `eino_skills.filesystem_tools` 时，可通过相对路径读取本文件。
+1. `GET /api/skills/cyberstrike-eino-demo` Responding `package_files` Should include `references/citations.md`.
+2. `GET /api/skills/cyberstrike-eino-demo?resource_path=references/citations.md` _Other Organiser.
+3. Multiple proxy and open `eino_skills.filesystem_tools` when, This document can be read via relative path.
 
-## 占位引用
+## Placed Reference
 
-- [OWASP Testing Guide](https://owasp.org/www-project-web-security-testing-guide/)（仅作链接格式示例）
+- [OWASP Testing Guide](https://owasp.org/www-project-web-security-testing-guide/) (As Example Link Format only)

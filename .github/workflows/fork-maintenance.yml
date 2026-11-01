@@ -1,0 +1,86 @@
+name: Maintained fork
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * 1'
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Runtime, authorization, process and update regressions
+        run: go test -race ./internal/... ./cmd/...
+      - name: Build every executable
+        run: go build ./...
+      - name: Browser regressions
+        run: node --test web/static/js/*.test.cjs
+      - name: Offline maintenance fixture regressions
+        run: |
+          python3 -m venv "$RUNNER_TEMP/maintenance-python"
+          "$RUNNER_TEMP/maintenance-python/bin/python" -m pip install --disable-pip-version-check PyYAML==6.0.3
+          "$RUNNER_TEMP/maintenance-python/bin/python" -m unittest discover -s scripts -p 'test_*.py'
+          "$RUNNER_TEMP/maintenance-python/bin/python" scripts/check-tool-contracts.py
+      - name: Shell syntax
+        run: bash -n run.sh upgrade.sh
+      - name: Bundled catalog contract audit
+        run: go run ./cmd/english-audit
+  security:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+      - name: Verify module checksums
+        run: go mod verify
+      - name: Install pinned official vulnerability analyzer
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+      - name: Record exact source, toolchain and platform
+        run: |
+          mkdir -p security-evidence
+          git rev-parse HEAD > security-evidence/provenance.txt
+          go version >> security-evidence/provenance.txt
+          go env GOOS GOARCH GOVERSION >> security-evidence/provenance.txt
+          govulncheck -version >> security-evidence/provenance.txt
+          go list -m -json all > security-evidence/modules.json
+      - name: Analyze modules, imports and reachable symbols
+        run: govulncheck -json ./... > security-evidence/govulncheck.json
+      # JSON mode deliberately returns zero for findings. Use the official
+      # text converter on that same report to fail on reachable symbols.
+      - name: Enforce reachable-vulnerability gate
+        run: govulncheck -mode convert < security-evidence/govulncheck.json > security-evidence/govulncheck.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: security-${{ matrix.runner }}
+          path: security-evidence/
+  upstream-dry-run:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Compare vendor history without promotion
+        run: python3 scripts/check-upstream.py --report upstream-report.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: upstream-dry-run
+          path: upstream-report.json

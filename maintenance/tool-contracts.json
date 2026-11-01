@@ -1,0 +1,365 @@
+{
+  "policy": "Reviewed executable argv, tool IDs, enablement and schema/default contracts. Descriptions excluded.",
+  "tools": {
+    "amass.yaml": {
+      "tool_id": "amass",
+      "machine_sha256": "ffaf7334e393803ce3e4b59dc2c47ce06d8c96a865f0de4c5177662850725795"
+    },
+    "angr.yaml": {
+      "tool_id": "angr",
+      "machine_sha256": "bd7df61c5291ef426299d5bbe96196e375d9e00edeb30bdabd478926d8bbb438"
+    },
+    "api-schema-analyzer.yaml": {
+      "tool_id": "api-schema-analyzer",
+      "machine_sha256": "3c737e7801e0b3f03c88729c851378820db3b1ed520e9e410d74dc0122cad4ac"
+    },
+    "arjun.yaml": {
+      "tool_id": "arjun",
+      "machine_sha256": "598d70505858eb436f55a2bf586e4f5794baae38a03abda16ba459d2c63df67a"
+    },
+    "arp-scan.yaml": {
+      "tool_id": "arp-scan",
+      "machine_sha256": "89a371a632cb67f1152fdab7245318bf765ff21b7ef02f803cebb71f52a7f35d"
+    },
+    "binwalk.yaml": {
+      "tool_id": "binwalk",
+      "machine_sha256": "37e88a33b889dcbf7151f421c92758809bd6dbe671959a339a6d7e927e4ddd1d"
+    },
+    "bloodhound.yaml": {
+      "tool_id": "bloodhound",
+      "machine_sha256": "daff1ccb99744673a391aa6f9ab3fd48f41f352329c1b875face891a2c64d3ae"
+    },
+    "checkov.yaml": {
+      "tool_id": "checkov",
+      "machine_sha256": "245a200fd1df84e3699de8948f5846e93be4105ebca1615ccf8db6107675e921"
+    },
+    "checksec.yaml": {
+      "tool_id": "checksec",
+      "machine_sha256": "c5d2ff649ad3701379b8af456fbe6e89c3b1b25ac2352867e1623fa2d788f0a2"
+    },
+    "clair.yaml": {
+      "tool_id": "clair",
+      "machine_sha256": "82ec5e27a6a22048b5fb9abe96c75a993a77521eca1f48373e7cb2242c27879a"
+    },
+    "cloudmapper.yaml": {
+      "tool_id": "cloudmapper",
+      "machine_sha256": "5b77824c98a02257e75bc5bafe86c2718bda9672f272f0fc2975f1e4fed4eb59"
+    },
+    "dalfox.yaml": {
+      "tool_id": "dalfox",
+      "machine_sha256": "0d85f2eec4773027ab35225e41438a0d9c0ac413b70c3d67a14bd6df867a2c2f"
+    },
+    "dirsearch.yaml": {
+      "tool_id": "dirsearch",
+      "machine_sha256": "943a5f35c19d329bf27f61632761ad86b276a03e782c08d5b7b9de8f2148a301"
+    },
+    "dnsenum.yaml": {
+      "tool_id": "dnsenum",
+      "machine_sha256": "b2ae27f642fdaed81fe9ca7752be035ee95ab78c57e4072eb581f22ac2bd434b"
+    },
+    "dnslog.yaml": {
+      "tool_id": "dnslog",
+      "machine_sha256": "0ae0b385bc1c3fc6318832a9ece696b903173d75e2e69a521ece566c59b9c428"
+    },
+    "dotdotpwn.yaml": {
+      "tool_id": "dotdotpwn",
+      "machine_sha256": "2e8a185b0c7ad291bb68f3aaf7d6341ba58424e3a433242d7ac143420ca834d6"
+    },
+    "enum4linux-ng.yaml": {
+      "tool_id": "enum4linux-ng",
+      "machine_sha256": "84d2d621d7ff05e87eba1bad1b9def4fa4cf324f7b280cef320611a0485423e3"
+    },
+    "exec.yaml": {
+      "tool_id": "exec",
+      "machine_sha256": "3c7a4aec8acbccf048f3c990dada837130dfc131730fc740bd26c947991b82ba"
+    },
+    "execute-python-script.yaml": {
+      "tool_id": "execute-python-script",
+      "machine_sha256": "c7f492d7ea829b0a6de55ca4c3bda3c6387a2e37ea458789dd6e91a3bfb4d624"
+    },
+    "exiftool.yaml": {
+      "tool_id": "exiftool",
+      "machine_sha256": "44b3262cf00f2843d203a670feab0eb4646ae27b903b0acf0bc52e78f2a9e073"
+    },
+    "falco.yaml": {
+      "tool_id": "falco",
+      "machine_sha256": "7676966cf687e7e1a1bb28cea181155f2a55c3033cd8d5a7b3d60fd9e73712a1"
+    },
+    "feroxbuster.yaml": {
+      "tool_id": "feroxbuster",
+      "machine_sha256": "28c7b26ba6138ab139f62fff3a693f2b41e35a60c3ad243c205b36da221dcbb6"
+    },
+    "ffuf.yaml": {
+      "tool_id": "ffuf",
+      "machine_sha256": "b86715e932d904854af7d70a660f646abcd9d86ba6b4552110fa480fcb55ae1b"
+    },
+    "fierce.yaml": {
+      "tool_id": "fierce",
+      "machine_sha256": "3d1a409ee1a7201eec44ec714626979939aa803cc9da4fcfc3a6ffab6422d4d0"
+    },
+    "fofa_search.yaml": {
+      "tool_id": "fofa_search",
+      "machine_sha256": "c698ceb06de747ac8903d7c9d9f2601ec6491f55262f2f0bf2bf066ae0463b1c"
+    },
+    "foremost.yaml": {
+      "tool_id": "foremost",
+      "machine_sha256": "aafe63f122275e6267140fd28a8f2d0ec5b1fbc1b95f47198b23f25562bcd2b9"
+    },
+    "fscan.yaml": {
+      "tool_id": "fscan",
+      "machine_sha256": "8f7006d8accfd1c8ffef3bd73262689442822854d6140860d13c4304e0e734b8"
+    },
+    "gau.yaml": {
+      "tool_id": "gau",
+      "machine_sha256": "9f4c5720647ccefd6997ed94569a6f512d4e131d18b373c46687f293e4725554"
+    },
+    "gdb.yaml": {
+      "tool_id": "gdb",
+      "machine_sha256": "52d5c4ca83e2e4120a1753bcbbc3b29fda4ba3abbe0ecebe50974a54d7aab6b3"
+    },
+    "ghidra.yaml": {
+      "tool_id": "ghidra",
+      "machine_sha256": "aa2d0ac5bf184c2a490949c59f5506e4c19d220e6663ceffb824018bc295fc43"
+    },
+    "gobuster.yaml": {
+      "tool_id": "gobuster",
+      "machine_sha256": "71caf3e2e800b90f720514ac2170a6d66a59abfafa9c9a20559c0d8f71c21d59"
+    },
+    "graphql-scanner.yaml": {
+      "tool_id": "graphql-scanner",
+      "machine_sha256": "5f51404e5c1c92faa8261a07326e76ee32c2e43d31a03dfc20e02f00dc9d6937"
+    },
+    "hashcat.yaml": {
+      "tool_id": "hashcat",
+      "machine_sha256": "96063f4f9161e3515fc9b7020f9ddc35da81ce91c7cd8846adf3d2495585670b"
+    },
+    "hashpump.yaml": {
+      "tool_id": "hashpump",
+      "machine_sha256": "83cab533bff61500794ef76c7030f3cac57b5fe3fe09df987c5134ef7c8bd3f2"
+    },
+    "http-framework-test.yaml": {
+      "tool_id": "http-framework-test",
+      "machine_sha256": "9665b9575e9358c7b91bb4ff3ddce8008dd885f3c3f2a48eb809b50858018999"
+    },
+    "hydra.yaml": {
+      "tool_id": "hydra",
+      "machine_sha256": "e059ca2fd85abd1f19e8f8eff81419b475354e2d8f72f581ffcbc94ccde562ac"
+    },
+    "impacket.yaml": {
+      "tool_id": "impacket",
+      "machine_sha256": "88e0b96eaccc45da1c79d7b8d19f91c2b3465b9076415026a3b84a5888d37358"
+    },
+    "install-python-package.yaml": {
+      "tool_id": "install-python-package",
+      "machine_sha256": "36188d82e20ec34c18be9cc1b4cfc51c3c477351acf4b0d4e3be17cfc3effc0f"
+    },
+    "jaeles.yaml": {
+      "tool_id": "jaeles",
+      "machine_sha256": "26749a195f85a60052c1c8d0e64453c50002f91c5bf974df939b04b766304787"
+    },
+    "john.yaml": {
+      "tool_id": "john",
+      "machine_sha256": "1c44fad318acbae24cab50e20efd1fdb8b354fe7da7c861f6a0be6b618677b1f"
+    },
+    "jwt-analyzer.yaml": {
+      "tool_id": "jwt-analyzer",
+      "machine_sha256": "2b7a542887365c1a0520d3eb225a0ed325b39fb401d5f414069cdb3d0df1a381"
+    },
+    "katana.yaml": {
+      "tool_id": "katana",
+      "machine_sha256": "9f6e95b7b73b607300f417c7b3cb2fa3f75ee0683a8c58208ba47f80b208ea85"
+    },
+    "kube-bench.yaml": {
+      "tool_id": "kube-bench",
+      "machine_sha256": "6d84c645b596c5b83eae91ccbbed5e635921fecc69d12a04b820673f298bf457"
+    },
+    "kube-hunter.yaml": {
+      "tool_id": "kube-hunter",
+      "machine_sha256": "ba922a96f0784a25165cd750051ba444315f2bcc5334b63079a927b2ca1b5d4e"
+    },
+    "libc-database.yaml": {
+      "tool_id": "libc-database",
+      "machine_sha256": "16d48d267cee7186f74eab856d0e09b156d6c4b6aa07b9371029aaa03adaa351"
+    },
+    "lightx.yaml": {
+      "tool_id": "lightx",
+      "machine_sha256": "9f1ccf5fbb40b2fd66f87ddba4b37700054f8d82dad5040065f6b1220a68cb43"
+    },
+    "linpeas.yaml": {
+      "tool_id": "linpeas",
+      "machine_sha256": "293820a8f7e6900888c97ee04945ae7f6a331f46bfd4d642c0c51a66b6fc090e"
+    },
+    "masscan.yaml": {
+      "tool_id": "masscan",
+      "machine_sha256": "ea8032b4df4c3fbb3d11ef483d4354c02624a7962dfcdaf55235dee6d2975d14"
+    },
+    "metasploit.yaml": {
+      "tool_id": "metasploit",
+      "machine_sha256": "8a176588f510585507eb1f05babb54ec6121ae46eef82f4a412be0a05a2f8c26"
+    },
+    "msfvenom.yaml": {
+      "tool_id": "msfvenom",
+      "machine_sha256": "af7c6e700d58363702c10b6080c4a6c4ada2b9ab523318ba6b38b606c30c280e"
+    },
+    "nbtscan.yaml": {
+      "tool_id": "nbtscan",
+      "machine_sha256": "93aec08b548fb02f0fe7dcd0f352c0c0e553eb891ab1e8e04b5ec97a07b77de8"
+    },
+    "netexec.yaml": {
+      "tool_id": "netexec",
+      "machine_sha256": "11ec98f7b36942409b79ea1e87d428ef462b08766c70e1ea027bcb0de8e2b118"
+    },
+    "nikto.yaml": {
+      "tool_id": "nikto",
+      "machine_sha256": "03cbf6b9e6ffee5caec098420ff181b078838cd8043e1ca8181b7668cfc22ec3"
+    },
+    "nmap.yaml": {
+      "tool_id": "nmap",
+      "machine_sha256": "81cf833cf97eb0c8832dc136712ddf41a4da0b745907771e0a1e3c356902e784"
+    },
+    "nuclei.yaml": {
+      "tool_id": "nuclei",
+      "machine_sha256": "3f25dcd9d40159a4a5d430cca26e36c3fa0acf33685a20f5495b8ebc2c36cd8d"
+    },
+    "objdump.yaml": {
+      "tool_id": "objdump",
+      "machine_sha256": "13d9a6aa79be950a34149776a7fd9b316316cf87b00556b1a0fa4cb1cb03389c"
+    },
+    "one-gadget.yaml": {
+      "tool_id": "one-gadget",
+      "machine_sha256": "4d40edbf96fe1b30dd29828e429500aea73247e9ede86f9096857d1fbe1d3c21"
+    },
+    "pacu.yaml": {
+      "tool_id": "pacu",
+      "machine_sha256": "8a2a3c97dadc7d66081e8cf1ccc6aebf7ee1eb55ea192580fe1cc8e2e6f674d8"
+    },
+    "paramspider.yaml": {
+      "tool_id": "paramspider",
+      "machine_sha256": "2b3ecaa9c498aacc92276de6412d631a3ecc03cfaf5ac5f2fb3e9e9316618c92"
+    },
+    "prowler.yaml": {
+      "tool_id": "prowler",
+      "machine_sha256": "21179bfb2dbcdbfde506201002dfdc3dff2c09ef26af0afb68028cdc986bd9e8"
+    },
+    "pwninit.yaml": {
+      "tool_id": "pwninit",
+      "machine_sha256": "8852ab41fb038f97e1b94386d05c262fe02a9e054a5620ca6f510332933ce238"
+    },
+    "pwntools.yaml": {
+      "tool_id": "pwntools",
+      "machine_sha256": "13eb91eac0a5ef83ffb713ff5072ff663cdd6c6cdbd31f33c8670af87414f047"
+    },
+    "quake_search.yaml": {
+      "tool_id": "quake_search",
+      "machine_sha256": "bc4c1a65409a9290c19ba69af62e656c518f34262dd8b44ce2efaf46e6765289"
+    },
+    "query-execution-result.yaml": {
+      "tool_id": "query_execution_result",
+      "machine_sha256": "b7da8eddbcb51398ad9948be36b443115b4273e7cc3792e8078691c458ae4a5c"
+    },
+    "radare2.yaml": {
+      "tool_id": "radare2",
+      "machine_sha256": "8cf9babd7cb8c5523caedde0838e5d7d8e09038193c56d4de25b38615391bcd0"
+    },
+    "responder.yaml": {
+      "tool_id": "responder",
+      "machine_sha256": "5ff21ead2f3d8dc744c6279ce86d5875def013f5b5eb3cadaeb10ce168767df2"
+    },
+    "ropgadget.yaml": {
+      "tool_id": "ropgadget",
+      "machine_sha256": "697c33d0b92a98343ea475ac24ba9ab6bdf63946b6c557d75e931ec57984dfbc"
+    },
+    "ropper.yaml": {
+      "tool_id": "ropper",
+      "machine_sha256": "0ece2f463effecf5dc3f1190ad92b11fc6e519f44383181e01a346ad5c9d1e0f"
+    },
+    "rpcclient.yaml": {
+      "tool_id": "rpcclient",
+      "machine_sha256": "f573124aba8803aff31ffb1f22f770ade37909ed04f5b2a87144420ccdcf87ad"
+    },
+    "rustscan.yaml": {
+      "tool_id": "rustscan",
+      "machine_sha256": "1b1f1a306b33e62acd82fdf43acf37ecabc6cbda6b00ad091289114268a1df30"
+    },
+    "scout-suite.yaml": {
+      "tool_id": "scout-suite",
+      "machine_sha256": "b35f3d764741586235749fb6a2c4e00bba516dfdf65b3034110531742563470f"
+    },
+    "shodan_search.yaml": {
+      "tool_id": "shodan_search",
+      "machine_sha256": "76a2c912b51c4875adff08571ece0f9abd4cd8842130d2417852636aac2642fb"
+    },
+    "smbmap.yaml": {
+      "tool_id": "smbmap",
+      "machine_sha256": "e6b71944a6f91b6a41edcc215070af0d4a008a46dcc638af89fad832022aee56"
+    },
+    "sqlmap.yaml": {
+      "tool_id": "sqlmap",
+      "machine_sha256": "b0ebca077f1293c7eeb857a462aa7f4c8266097580128920938b07077f389455"
+    },
+    "steghide.yaml": {
+      "tool_id": "steghide",
+      "machine_sha256": "11dfafe63eeca67b5ba5a0cae39ca3876631e18eb56b85f137742d64c4dc3277"
+    },
+    "strings.yaml": {
+      "tool_id": "strings",
+      "machine_sha256": "222a54a8c6c464b23bd99ced627d4dd9a9526ba9c579e09c4cbda21e0a26ada1"
+    },
+    "subfinder.yaml": {
+      "tool_id": "subfinder",
+      "machine_sha256": "84c879b0dab4af09596329542394c8af9db3532c25f3ae39238acf87295b470c"
+    },
+    "terrascan.yaml": {
+      "tool_id": "terrascan",
+      "machine_sha256": "6ba262e4fb15c2de5c2cfcb1b1d7e7de807abe08d9510b558c9f6951c3c71fef"
+    },
+    "trivy.yaml": {
+      "tool_id": "trivy",
+      "machine_sha256": "aa9482d2fa7470621e7e441006f624d257faed68c3b3b10686a81e21777deaee"
+    },
+    "virustotal_search.yaml": {
+      "tool_id": "virustotal_search",
+      "machine_sha256": "01cc824966c6d5793b5381d648ad256a84ded551d5f33362656833cd88374c2f"
+    },
+    "volatility3.yaml": {
+      "tool_id": "volatility3",
+      "machine_sha256": "e4b29ab1f6740ddb82c0cc6ccc7d5646db1184b7581d547045ffc2a8b5004deb"
+    },
+    "wafw00f.yaml": {
+      "tool_id": "wafw00f",
+      "machine_sha256": "839cb965cd9897b2dec251470a1238e901ab65277081359ae2fe05fe2e20d332"
+    },
+    "waybackurls.yaml": {
+      "tool_id": "waybackurls",
+      "machine_sha256": "68594d42be1ce9ade437e81fcf6d849c9e97405f7e2278c3f5c23a5a748a6416"
+    },
+    "wpscan.yaml": {
+      "tool_id": "wpscan",
+      "machine_sha256": "d29722fcf4025da176a7b63540e89b81df2d6696b03b7779f6109b8302f912af"
+    },
+    "x8.yaml": {
+      "tool_id": "x8",
+      "machine_sha256": "deb3a6e8a571081ef5212649a02733dbcb1410dec0ffde11c9a12e91e1af0c01"
+    },
+    "xsser.yaml": {
+      "tool_id": "xsser",
+      "machine_sha256": "6735725219e94cbcbe5e7a480a7210e1728a49e2f4e4f74af93b1a1da378ccd6"
+    },
+    "xxd.yaml": {
+      "tool_id": "xxd",
+      "machine_sha256": "3b8da42b2bfde7b25166748b3ce7027f02b395ee986e5cf13d29f9f4ba280da8"
+    },
+    "zap.yaml": {
+      "tool_id": "zap",
+      "machine_sha256": "a7bb83d42c249e29b483908df98062eb33ddb980f457c95118cb9f083eceb7ec"
+    },
+    "zoomeye_search.yaml": {
+      "tool_id": "zoomeye_search",
+      "machine_sha256": "31411f4313841bdf94be7c8ae3046f32ee1fcbc72271db80a4ccd65df96b867e"
+    },
+    "zsteg.yaml": {
+      "tool_id": "zsteg",
+      "machine_sha256": "29691f378b5ccba96c02e41924852f28c4a2d30a0f31a46d3e6589bf3956ea7a"
+    }
+  }
+}

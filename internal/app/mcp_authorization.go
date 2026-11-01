@@ -418,7 +418,7 @@ func authorizeProjectTool(ctx context.Context, principal authctx.Principal, db *
 		return fmt.Errorf("no access to project: %w", err)
 	}
 	if strings.TrimSpace(projectID) == "" {
-		return fmt.Errorf("当前对话未绑定项目，无法使用项目黑板工具，请先在对话中选择项目或创建带项目的对话")
+		return fmt.Errorf("The current dialogue does not bind items and cannot use the item blackboard tool. Please select items or create dialogue with items during the dialogue")
 	}
 	if !db.UserCanAccessResource(principal.UserID, principal.ScopeFor(permission), "project", projectID) {
 		return fmt.Errorf("no access to project %s", projectID)

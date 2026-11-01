@@ -1,45 +1,27 @@
 name: "one-gadget"
 command: "one_gadget"
 enabled: true
-short_description: "在libc中查找one-shot RCE gadget的工具"
+short_description: "Find candidate one-shot execution gadgets in libc"
 description: |
-  One-gadget是一个用于在libc中查找one-shot RCE gadget的工具。
+  Find candidate one-shot execution gadgets in libc.
 
-  **主要功能：**
-  - One-shot gadget搜索
-  - 约束级别检查
-  - 多种libc支持
-
-  **使用场景：**
-  - CTF挑战
-  - 漏洞利用开发
-  - ROP链简化
-  - 安全研究
+  Use the parameters below to select the target and native options. Additional native arguments are supported where exposed by this recipe.
 parameters:
   - name: "libc_path"
     type: "string"
-    description: "libc二进制文件路径"
+    description: "Path to the libc binary."
     required: true
     position: 0
     format: "positional"
   - name: "level"
     type: "int"
-    description: "约束级别（0, 1, 2）"
+    description: "Native test or analysis level. Native option: -l. Default: 1."
     required: false
     flag: "-l"
     format: "flag"
     default: 1
   - name: "additional_args"
     type: "string"
-    description: |
-      额外的one-gadget参数。用于传递未在参数列表中定义的one-gadget选项。
-
-      **示例值：**
-      - 根据工具特性添加常用参数示例
-
-      **注意事项：**
-      - 多个参数用空格分隔
-      - 确保参数格式正确，避免命令注入
-      - 此参数会直接追加到命令末尾
+    description: "Additional native command-line arguments, appended according to this recipe."
     required: false
     format: "positional"

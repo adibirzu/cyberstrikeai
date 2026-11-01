@@ -274,7 +274,7 @@ func newEinoModelFailoverConfig(
 		return nil, nil
 	}
 	if factory == nil {
-		return nil, fmt.Errorf("eino model failover: 模型工厂为空")
+		return nil, fmt.Errorf("eino model failover: Model factory is empty.")
 	}
 
 	maxRetries := len(channels)
@@ -356,7 +356,7 @@ func newEinoAgenticModelFailoverConfig(
 		return nil, nil
 	}
 	if factory == nil {
-		return nil, fmt.Errorf("eino agentic model failover: 模型工厂为空")
+		return nil, fmt.Errorf("eino agentic model failover: Model factory is empty.")
 	}
 
 	maxRetries := len(channels)
@@ -525,7 +525,7 @@ func emitEinoModelFailoverEvent(
 	if progress == nil {
 		return
 	}
-	msg := fmt.Sprintf("主模型重试耗尽，正在切换备用模型 %s。", modelName)
+	msg := fmt.Sprintf("The main model is running out again and is switching to the backup model %s.", modelName)
 	progress("eino_model_failover", msg, map[string]interface{}{
 		"conversationId": conversationID,
 		"source":         "eino",

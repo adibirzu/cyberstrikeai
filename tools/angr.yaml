@@ -7,7 +7,7 @@ args:
     import sys
 
     if len(sys.argv) < 2:
-        sys.stderr.write("缺少脚本内容\n")
+        sys.stderr.write('Missing script content\n')
         sys.exit(1)
 
     script_content = sys.argv[1]
@@ -32,63 +32,49 @@ args:
     # 执行用户脚本，提供上下文变量
     exec(script_content, context)
 enabled: true
-short_description: "符号执行和二进制分析框架"
+short_description: "Run Python-based symbolic execution and binary analysis with angr"
 description: |
-  Angr是一个符号执行和二进制分析框架，用于自动化漏洞发现和利用。
+  Run Python-based symbolic execution and binary analysis with angr.
 
-  **使用方式：**
-  - 通过 `script_content` 参数提供Python脚本，可直接导入 `angr` 并访问以下变量：
-    - `binary_path`: 目标二进制路径
-    - `find_address`: 待寻找的地址（可为空）
-    - `avoid_addresses`: 需要避开的地址列表
-    - `analysis_type`: 自定义分析类型标记（默认symbolic）
-    - `additional_args`: 额外参数列表（通过 `additional_args` 传入）
-  - 在脚本中自行控制分析流程，可调用 `print()` 输出结果。
+  Use the parameters below to select the target and native options. Additional native arguments are supported where exposed by this recipe.
 parameters:
   - name: "script_content"
     type: "string"
-    description: "要执行的angr Python脚本内容"
+    description: "Python script content to execute."
     required: true
     position: 0
     format: "positional"
   - name: "binary"
     type: "string"
-    description: "要分析的二进制文件路径，将作为 binary_path 变量传递给脚本"
+    description: "Binary path exposed to the script as binary. Default: ."
     required: false
     default: ""
     position: 1
     format: "positional"
   - name: "find_address"
     type: "string"
-    description: "符号执行中要查找的地址（可选，传入脚本变量 find_address）"
+    description: "Optional target address exposed as find_address. Default: ."
     required: false
     default: ""
     position: 2
     format: "positional"
   - name: "avoid_addresses"
     type: "string"
-    description: "要避免的地址（逗号分隔，脚本变量 avoid_addresses）"
+    description: "Comma-separated addresses exposed as avoid_addresses. Default: ."
     required: false
     default: ""
     position: 3
     format: "positional"
   - name: "analysis_type"
     type: "string"
-    description: "用于脚本内自定义分支的分析类型标签（例如 symbolic/cfg/static）"
+    description: "Analysis label available to custom script branches. Default: symbolic."
     required: false
     default: "symbolic"
     position: 4
     format: "positional"
   - name: "additional_args"
     type: "string"
-    description: |
-      额外参数，脚本中可通过 `additional_args` 列表访问。
-
-      **示例：**
-      - "--max-depth 8 --timeout 60"
-
-      **注意事项：**
-      - 参数会按照shell规则拆分
+    description: "Additional values available to the Python script through its additional_args list. Default: ."
     required: false
     default: ""
     position: 5
