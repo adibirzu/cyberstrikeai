@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
@@ -53,22 +53,23 @@
         <div class="login-card">
             <div class="login-brand">
                 <h2 class="login-title">
-                    <span data-i18n="login.titlePrefix">登录</span>
+                    <span data-i18n="login.titlePrefix">Sign in</span>
                     <span class="brand-wordmark brand-wordmark--sm" aria-label="CyberStrikeAI">
                         <span class="brand-wordmark__core">CyberStrike</span><span class="brand-wordmark__ai">AI</span>
                     </span>
                 </h2>
-                <p class="login-subtitle" data-i18n="login.subtitle">使用平台账号登录，默认管理员为 admin。</p>
+                <p class="login-subtitle" data-i18n="login.subtitle">Use Google or the local account. Google uses the same sign-in as Pentforge.</p>
             </div>
+            <a class="btn-secondary login-submit" href="https://pentforge.cloudflareaccess.com/cdn-cgi/access/login/cyberstrike.pentforge.app" style="display:flex;justify-content:center;margin-bottom:12px;text-decoration:none;">Continue with Google</a>
             <form id="login-form" class="login-form" novalidate>
                 <div class="form-group">
-                    <label for="login-username" data-i18n="login.usernameLabel">用户名</label>
+                    <label for="login-username" data-i18n="login.usernameLabel">Username</label>
                     <input type="text" id="login-username" placeholder="admin" required maxlength="64" autocomplete="username" data-i18n="login.usernamePlaceholder" data-i18n-attr="placeholder" />
                 </div>
                 <div class="form-group">
-                    <label for="login-password" data-i18n="login.passwordLabel">密码</label>
+                    <label for="login-password" data-i18n="login.passwordLabel">Password</label>
                     <div class="login-password-field">
-                        <input type="password" id="login-password" placeholder="输入登录密码" required autocomplete="current-password" aria-describedby="login-error" data-i18n="login.passwordPlaceholder" data-i18n-attr="placeholder" />
+                        <input type="password" id="login-password" placeholder="Local password" required autocomplete="current-password" aria-describedby="login-error" data-i18n="login.passwordPlaceholder" data-i18n-attr="placeholder" />
                         <button type="button" id="login-password-toggle" class="login-password-toggle" aria-label="显示密码" title="显示密码" aria-controls="login-password" aria-pressed="false" onclick="toggleLoginPasswordVisibility()" data-i18n="login.showPassword" data-i18n-attr="aria-label,title" data-i18n-skip-text="true">
                             <svg class="login-password-icon login-password-icon--show" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
                                 <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
@@ -82,7 +83,7 @@
                 </div>
                 <div id="login-error" class="login-error" role="alert" style="display: none;"></div>
                 <button type="submit" class="btn-primary login-submit">
-                    <span data-i18n="login.submit">登录</span>
+                    <span data-i18n="login.submit">Sign in with local account</span>
                 </button>
             </form>
         </div>
