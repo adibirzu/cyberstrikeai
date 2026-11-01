@@ -3055,20 +3055,20 @@ function handleStreamEvent(event, progressElement, progressId,
                 const phase = translatePlanExecuteAgentName(d.einoAgent != null ? d.einoAgent : '');
                 iterTitle = typeof window.t === 'function'
                     ? window.t('chat.einoPlanExecuteRound', { n: n, phase: phase })
-                    : ('Plan-Execute . ' + n + ' Round . ' + phase);
+                    : ('Plan-Execute · round ' + n + ' · ' + phase);
             } else if (d.einoScope === 'main') {
                 iterTitle = typeof window.t === 'function'
                     ? window.t('chat.einoOrchestratorRound', { n: n })
-                    : ('Acting President . ' + n + ' Wheel');
+                    : ('Orchestrator · round ' + n);
             } else if (d.einoScope === 'sub') {
                 const ag = d.einoAgent != null ? String(d.einoAgent).trim() : '';
                 iterTitle = typeof window.t === 'function'
                     ? window.t('chat.einoSubAgentStep', { n: n, agent: ag })
-                    : ('Sub-Actor . ' + ag + ' • Paragraph ' + n + ' Step');
+                    : ('Sub-agent ' + ag + ' · step ' + n);
             } else {
                 iterTitle = typeof window.t === 'function'
                     ? window.t('chat.iterationRound', { n: n })
-                    : ('I don\'t think so. ' + n + ' Rotation');
+                    : ('Iteration ' + n);
             }
             addTimelineItem(timeline, 'iteration', {
                 title: iterTitle,
@@ -6565,16 +6565,16 @@ function formatLiveTimelinePrunedMarker(marker) {
     const translate = typeof window.t === 'function' ? window.t : null;
     const baseText = translate
         ? translate('chat.liveTimelinePruned', { count: count })
-        : ('Before Unearthed ' + count + ' Details of the real-time process, which allows the full record to be viewed by page upon completion of the task');
+        : ('Collapsed the first ' + count + ' live process details. View the full record page by page after the task completes.');
     if (minIteration <= 0 || maxIteration < minIteration) return baseText;
     if (minIteration === maxIteration) {
         return baseText + ' · ' + (translate
             ? translate('chat.liveTimelinePrunedSingleRound', { n: minIteration })
-            : ('Main Agent No. ' + minIteration + ' Wheel'));
+            : ('main-agent round ' + minIteration));
     }
     return baseText + ' · ' + (translate
         ? translate('chat.liveTimelinePrunedRoundRange', { from: minIteration, to: maxIteration })
-        : ('Main Agent No. ' + minIteration + '–' + maxIteration + ' Wheel'));
+        : ('main-agent rounds ' + minIteration + '–' + maxIteration));
 }
 
 function pruneLiveTimelineIfNeeded(timeline) {
