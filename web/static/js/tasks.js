@@ -252,7 +252,7 @@ async function loadTasks() {
                 const completedResult = await completedResponse.value.json();
                 completedTasks = completedResult.tasks || [];
             } catch (e) {
-                console.warn('This post is part of our special coverage Syria Protests 2011.', e);
+                console.warn('Failed to parse completed-task history:', e);
             }
         }
 
@@ -2587,10 +2587,12 @@ function startInlineEditRole() {
     // 获取当前详情中角色名 — 从 layout 的 data 中无法获取，故使用 API 拉取
     apiFetch(`/api/batch-tasks/${queueId}`).then(r => r.json()).then(detail => {
         const queue = detail.queue;
-        const currentRole = batchRoleDisplayName(queue.role, batchQueuesState.loadedRoles);
+        const currentRole = typeof window.resolveBundledRoleSelector === 'function'
+            ? window.resolveBundledRoleSelector(queue.role, batchQueuesState.loadedRoles)
+            : String(queue.role || '');
         const roles = (Array.isArray(batchQueuesState.loadedRoles) ? batchQueuesState.loadedRoles : []).filter(r => r.name !== 'Default' && r.enabled !== false).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'en-US'));
         const currentInList = !currentRole || roles.some(r => r.name === currentRole);
-        const orphanOpt = !currentInList ? `<option value="${escapeAttr(currentRole)}" selected>${escapeHtml(currentRole)} (${escapeHtml(_t('batchQueueDetailModal.roleNotFound') || 'Removed')})</option>` : '';
+        const orphanOpt = !currentInList ? `<option value="${escapeAttr(currentRole)}" selected>${escapeHtml(batchRoleDisplayName(currentRole, batchQueuesState.loadedRoles))} (${escapeHtml(_t('batchQueueDetailModal.roleNotFound') || 'Removed')})</option>` : '';
         const opts = roles.map(r => `<option value="${escapeAttr(r.name)}" ${r.name === currentRole ? 'selected' : ''}>${escapeHtml(r.name)}</option>`).join('');
         container.innerHTML = `<span class="bq-inline-edit-controls">
             <select id="bq-edit-role">

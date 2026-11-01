@@ -312,7 +312,7 @@ async function loadRoles() {
         }
         const data = await response.json();
         roles = data.roles || [];
-        currentRole = typeof window.englishBundledRoleName === 'function' ? window.englishBundledRoleName(currentRole, roles) : currentRole;
+        currentRole = typeof window.resolveBundledRoleSelector === 'function' ? window.resolveBundledRoleSelector(currentRole, roles) : currentRole;
         updateRoleSelectorDisplay();
         renderRoleSelectionSidebar(); // 渲染侧边栏角色列表
         return roles;
@@ -330,7 +330,7 @@ async function loadRoles() {
 // 处理角色变更
 function handleRoleChange(roleName) {
     const oldRole = currentRole;
-    currentRole = typeof window.englishBundledRoleName === 'function' ? window.englishBundledRoleName(roleName, roles) : (roleName || '');
+    currentRole = typeof window.resolveBundledRoleSelector === 'function' ? window.resolveBundledRoleSelector(roleName, roles) : (roleName || '');
     localStorage.setItem('currentRole', currentRole);
     updateRoleSelectorDisplay();
     renderRoleSelectionSidebar(); // 更新侧边栏选中状态

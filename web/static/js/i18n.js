@@ -16,6 +16,14 @@
         if (Array.isArray(catalog) && catalog.some(role => role.name === value)) return value;
         return LEGACY_BUNDLED_ROLE_NAMES[value] || value;
     };
+    // Selectors are machine input: resolve only against a successfully loaded
+    // catalog, and never change an exact operator-defined role.
+    window.resolveBundledRoleSelector = function (name, catalog) {
+        const value = String(name || '');
+        if (!Array.isArray(catalog) || catalog.some(role => role && role.name === value)) return value;
+        const alias = LEGACY_BUNDLED_ROLE_NAMES[value];
+        return alias && catalog.some(role => role && role.name === alias) ? alias : value;
+    };
     window.englishFactoryAccountName = function (user) {
         if (!user) return '';
         const display = String(user.display_name || user.displayName || user.username || '').trim();
