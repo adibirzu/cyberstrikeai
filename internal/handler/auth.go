@@ -21,6 +21,7 @@ type AuthHandler struct {
 	configPath string
 	logger     *zap.Logger
 	audit      *audit.Service
+	accessSSO  *security.AccessSSO
 }
 
 // SetAudit wires platform audit logging.
@@ -32,6 +33,7 @@ func (h *AuthHandler) SetAudit(s *audit.Service) {
 func NewAuthHandler(manager *security.AuthManager, cfg *config.Config, configPath string, logger *zap.Logger) *AuthHandler {
 	return &AuthHandler{
 		manager:    manager,
+		accessSSO:  security.AccessSSOFromEnv(),
 		config:     cfg,
 		configPath: configPath,
 		logger:     logger,
@@ -50,14 +52,18 @@ type changePasswordRequest struct {
 
 // Login verifies password and returns a session token.
 func (h *AuthHandler) Login(c *gin.Context) {
+	if security.AccessSSOOnly() {
+		c.JSON(http.StatusGone, gin.H{"error": "Use your verified organization sign-in"})
+		return
+	}
 	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "密码不能为空"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Password is required"})
 		return
 	}
 	req.Username = strings.TrimSpace(req.Username)
 	if req.Username == "" || utf8.RuneCountInString(req.Username) > 64 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "用户名不能为空，且不能超过 64 个字符"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Username is required and must be at most 64 characters"})
 		return
 	}
 
@@ -73,7 +79,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 				Actor:    strings.TrimSpace(req.Username),
 			})
 		}
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "密码错误"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
 		return
 	}
 	session, _ := h.manager.ValidateToken(token)
@@ -108,6 +114,47 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	})
 }
 
+// SSO exchanges a cryptographically verified Access identity for its existing native RBAC session.
+func (h *AuthHandler) SSO(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	if origin := c.GetHeader("Origin"); origin != "" && origin != "https://cyberstrike.pentforge.app" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Invalid sign-in origin"})
+		return
+	}
+	identity, err := h.accessSSO.Verify(c.Request.Context(), strings.TrimSpace(c.GetHeader("Cf-Access-Jwt-Assertion")))
+	headerEmail := strings.ToLower(strings.TrimSpace(c.GetHeader("Cf-Access-Authenticated-User-Email")))
+	if err != nil || (headerEmail != "" && headerEmail != identity.Email) {
+		if h.audit != nil {
+			h.audit.Record(c, audit.Entry{Category: "auth", Action: "login", Result: "failure", Message: "Organization SSO assertion rejected"})
+		}
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Your organization sign-in could not be verified. Reopen the application from Pentforge."})
+		return
+	}
+	token, expiresAt, err := h.manager.StartSession(identity.Username)
+	if err != nil {
+		if h.audit != nil {
+			h.audit.Record(c, audit.Entry{Category: "auth", Action: "login", Result: "failure", Actor: identity.Username, Message: "Organization identity has no enabled native account"})
+		}
+		c.JSON(http.StatusForbidden, gin.H{"error": "Your identity is verified, but CyberStrikeAI access has not been assigned. Contact your administrator."})
+		return
+	}
+	session, ok := h.manager.ValidateToken(token)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Sign-in session unavailable"})
+		return
+	}
+	if h.audit != nil {
+		h.audit.Record(c, audit.Entry{Category: "auth", Action: "login", Result: "success", Actor: session.Username, SessionHint: audit.HintFromToken(token), Message: "Organization SSO verified", Detail: map[string]interface{}{"method": "cloudflare_access", "expires_at": expiresAt.UTC().Format(time.RFC3339)}})
+	}
+	c.JSON(http.StatusOK, gin.H{"token": token, "expires_at": expiresAt.UTC().Format(time.RFC3339), "session_duration_hr": h.manager.SessionDurationHours(), "user": gin.H{"id": session.UserID, "username": session.Username, "display_name": session.DisplayName}, "roles": session.Roles, "permissions": permissionKeys(session.Permissions), "permission_scopes": session.PermissionScopes, "scope": session.Scope})
+}
+
+// SignInMethods contains no users, mappings, secrets or tenant data.
+func (h *AuthHandler) SignInMethods(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	c.JSON(http.StatusOK, gin.H{"access_sso": h.accessSSO != nil, "sso_only": security.AccessSSOOnly()})
+}
+
 // Logout revokes the current session token.
 func (h *AuthHandler) Logout(c *gin.Context) {
 	token := c.GetString(security.ContextAuthTokenKey)
@@ -129,14 +176,14 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 			Message:  "退出登录",
 		})
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "已退出登录"})
+	c.JSON(http.StatusOK, gin.H{"message": "Signed out"})
 }
 
 // ChangePassword updates the login password.
 func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	var req changePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "参数无效"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid password change"})
 		return
 	}
 
@@ -144,17 +191,17 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	newPassword := strings.TrimSpace(req.NewPassword)
 
 	if oldPassword == "" || newPassword == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "当前密码和新密码均不能为空"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Current password and new password are required"})
 		return
 	}
 
 	if len(newPassword) < 8 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "新密码长度至少需要 8 位"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "New password must be at least 8 characters"})
 		return
 	}
 
 	if oldPassword == newPassword {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "新密码不能与旧密码相同"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "New password must be different from the current password"})
 		return
 	}
 
@@ -172,7 +219,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 				Message:  "修改密码失败：当前密码不正确",
 			})
 		}
-		c.JSON(http.StatusBadRequest, gin.H{"error": "当前密码不正确"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Current password is incorrect"})
 		return
 	}
 
@@ -183,7 +230,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 		if h.logger != nil {
 			h.logger.Error("更新用户密码失败", zap.Error(err))
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新用户密码失败"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update the password"})
 		return
 	}
 
@@ -200,20 +247,20 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "密码已更新，请使用新密码重新登录"})
+	c.JSON(http.StatusOK, gin.H{"message": "Password updated. Sign in again with the new password."})
 }
 
 // Validate returns the current session status.
 func (h *AuthHandler) Validate(c *gin.Context) {
 	token := c.GetString(security.ContextAuthTokenKey)
 	if token == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "会话无效"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Sign in required"})
 		return
 	}
 
 	session, ok := h.manager.ValidateToken(token)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "会话已过期"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Session expired"})
 		return
 	}
 

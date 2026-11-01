@@ -88,6 +88,63 @@ func (a *AuthManager) AttachRBACStore(db *database.DB) (generatedAdminPassword s
 	return generatedAdminPassword, nil
 }
 
+// StartSession opens a session for an account that a verified SSO provider already identified.
+func (a *AuthManager) StartSession(username string) (string, time.Time, error) {
+	for {
+		a.mu.RLock()
+		version := a.accessVersion
+		a.mu.RUnlock()
+		session, err := a.sessionForExistingUser(username)
+		if err != nil {
+			return "", time.Time{}, err
+		}
+		if a.publishSession(session, version) {
+			return session.Token, session.ExpiresAt, nil
+		}
+	}
+}
+
+func (a *AuthManager) sessionForExistingUser(username string) (Session, error) {
+	token := uuid.NewString()
+	expiresAt := time.Now().Add(a.sessionDuration)
+	a.mu.RLock()
+	db := a.db
+	a.mu.RUnlock()
+	if db == nil {
+		return Session{}, errors.New("authentication store is not configured")
+	}
+	username = strings.TrimSpace(strings.ToLower(username))
+	user, err := db.GetRBACUserByUsername(username)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return Session{}, ErrInvalidPassword
+		}
+		return Session{}, err
+	}
+	if !user.Enabled {
+		return Session{}, ErrInvalidPassword
+	}
+	access, err := db.ResolveRBACAccess(user.ID)
+	if err != nil {
+		return Session{}, err
+	}
+	roleIDs := make([]string, 0, len(access.Roles))
+	for _, role := range access.Roles {
+		roleIDs = append(roleIDs, role.ID)
+	}
+	return Session{
+		Token:            token,
+		ExpiresAt:        expiresAt,
+		UserID:           user.ID,
+		Username:         user.Username,
+		DisplayName:      user.DisplayName,
+		Roles:            roleIDs,
+		Permissions:      access.Permissions,
+		PermissionScopes: access.PermissionScopes,
+		Scope:            access.Scope,
+	}, nil
+}
+
 // Authenticate validates the password and creates a new session.
 func (a *AuthManager) Authenticate(username, password string) (string, time.Time, error) {
 	for {
@@ -110,6 +167,12 @@ func (a *AuthManager) publishSession(session Session, version uint64) bool {
 	defer a.mu.Unlock()
 	if a.accessVersion != version {
 		return false
+	}
+	now := time.Now()
+	for token, prior := range a.sessions {
+		if !prior.ExpiresAt.After(now) {
+			delete(a.sessions, token)
+		}
 	}
 	a.sessions[session.Token] = session
 	return true

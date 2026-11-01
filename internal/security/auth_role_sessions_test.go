@@ -60,3 +60,20 @@ func TestPublishSessionRejectsSnapshotResolvedAcrossRevocation(t *testing.T) {
 		})
 	}
 }
+
+func TestPublishSessionPrunesExpiredSnapshotsAndPreservesValidSessions(t *testing.T) {
+	a := NewAuthManager(12)
+	a.sessions["expired"] = Session{Token: "expired", ExpiresAt: time.Now().Add(-time.Minute)}
+	a.sessions["current"] = Session{Token: "current", ExpiresAt: time.Now().Add(time.Hour)}
+	if !a.publishSession(Session{Token: "new", ExpiresAt: time.Now().Add(time.Hour)}, a.accessVersion) {
+		t.Fatal("new session rejected")
+	}
+	if _, ok := a.sessions["expired"]; ok {
+		t.Fatal("expired session retained")
+	}
+	for _, token := range []string{"current", "new"} {
+		if _, ok := a.ValidateToken(token); !ok {
+			t.Fatal("valid session removed")
+		}
+	}
+}

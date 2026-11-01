@@ -3256,6 +3256,7 @@
         const totalPages = Math.max(1, Math.ceil(total / pageSize));
         if (total === 0) {
             paginationContainer.innerHTML = '';
+            if (typeof initPaginationSelects === 'function') initPaginationSelects(paginationContainer);
             return;
         }
         const start = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
@@ -3284,6 +3285,7 @@
         `;
         html += '</div>';
         paginationContainer.innerHTML = html;
+        if (typeof initPaginationSelects === 'function') initPaginationSelects(paginationContainer);
         if (typeof applyTranslations === 'function') applyTranslations(paginationContainer);
     };
 
@@ -4194,6 +4196,7 @@
 
         if (total === 0) {
             paginationContainer.innerHTML = '';
+            if (typeof initPaginationSelects === 'function') initPaginationSelects(paginationContainer);
             return;
         }
 
@@ -4224,6 +4227,7 @@
         `;
         html += '</div>';
         paginationContainer.innerHTML = html;
+        if (typeof initPaginationSelects === 'function') initPaginationSelects(paginationContainer);
         if (typeof applyTranslations === 'function') applyTranslations(paginationContainer);
     };
 
@@ -4362,22 +4366,31 @@
         if (typeof rbacAfterDynamicRender === 'function') rbacAfterDynamicRender(container);
     };
 
-    C2.connectEventStream = function() {
+    C2.eventStreamGeneration = 0;
+    C2.eventStreamRetry = null;
+    C2.disconnectEventStream = function() {
+        C2.eventStreamGeneration++;
+        if (C2.eventStreamRetry) clearTimeout(C2.eventStreamRetry);
+        C2.eventStreamRetry = null;
         if (C2.eventSource) C2.eventSource.close();
-
-        let streamUrl = `${API_BASE}/events/stream`;
-        if (typeof authToken !== 'undefined' && authToken) {
-            streamUrl += `?token=${encodeURIComponent(authToken)}`;
-        }
-        C2.eventSource = new EventSource(streamUrl);
-        C2.eventSource.onmessage = (e) => {
-            try {
-                const event = JSON.parse(e.data);
-                C2.onEvent(event);
-            } catch (err) {}
+        C2.eventSource = null;
+    };
+    C2.connectEventStream = async function() {
+        C2.disconnectEventStream();
+        const generation = C2.eventStreamGeneration;
+        if (typeof initialAuthenticationPending !== 'undefined' && initialAuthenticationPending) await initialAuthentication;
+        if (generation !== C2.eventStreamGeneration || typeof isTokenValid !== 'function' || !isTokenValid()
+            || !window.currentPageId?.startsWith('c2') || !hasPermission('c2:read')) return;
+        const stream = new EventSource(`${API_BASE}/events/stream?token=${encodeURIComponent(authToken)}`);
+        C2.eventSource = stream;
+        stream.onmessage = (e) => {
+            if (generation !== C2.eventStreamGeneration) return;
+            try { C2.onEvent(JSON.parse(e.data)); } catch (_) {}
         };
-        C2.eventSource.onerror = () => {
-            setTimeout(() => C2.connectEventStream(), 5000);
+        stream.onerror = () => {
+            stream.close();
+            if (generation !== C2.eventStreamGeneration || !isTokenValid()) return;
+            C2.eventStreamRetry = setTimeout(() => C2.connectEventStream(), 5000);
         };
     };
 

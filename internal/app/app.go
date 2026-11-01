@@ -962,12 +962,17 @@ func setupRoutes(
 ) {
 	// API路由
 	api := router.Group("/api")
+	// Status for the Pentforge console. No session, no tool list, no configuration.
+	api.GET("/health", handler.PublicHealth(app.config.Version))
 
 	// 认证相关路由
 	authRoutes := api.Group("/auth")
 	loginRL := security.NewRateLimiter(10, 1*time.Minute)
+	ssoRL := security.NewRateLimiter(30, 1*time.Minute)
 	{
 		authRoutes.POST("/login", security.RateLimitMiddleware(loginRL), authHandler.Login)
+		authRoutes.POST("/sso", security.RateLimitMiddleware(ssoRL), authHandler.SSO)
+		authRoutes.GET("/methods", authHandler.SignInMethods)
 		authRoutes.POST("/logout", security.AuthMiddleware(authManager), authHandler.Logout)
 		authRoutes.POST("/change-password", security.AuthMiddleware(authManager), security.RequirePermission("auth:self"), authHandler.ChangePassword)
 		authRoutes.GET("/validate", security.AuthMiddleware(authManager), authHandler.Validate)
