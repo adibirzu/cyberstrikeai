@@ -168,6 +168,12 @@ func (a *AuthManager) publishSession(session Session, version uint64) bool {
 	if a.accessVersion != version {
 		return false
 	}
+	now := time.Now()
+	for token, prior := range a.sessions {
+		if !prior.ExpiresAt.After(now) {
+			delete(a.sessions, token)
+		}
+	}
 	a.sessions[session.Token] = session
 	return true
 }

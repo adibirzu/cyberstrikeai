@@ -27,6 +27,7 @@ function isTokenValid() {
 }
 
 function saveAuth(token, expiresAt, meta = {}) {
+    const previousToken = authToken;
     const expiry = expiresAt instanceof Date ? expiresAt : new Date(expiresAt);
     authToken = token;
     authTokenExpiry = expiry;
@@ -46,10 +47,15 @@ function saveAuth(token, expiresAt, meta = {}) {
     } catch (error) {
         console.warn('无法持久化认证信息:', error);
     }
+    if (previousToken !== token && window.C2) {
+        window.C2.disconnectEventStream();
+        if (isAppInitialized && window.currentPageId?.startsWith('c2')) window.C2.connectEventStream();
+    }
     renderUserMenuProfile();
 }
 
 function clearAuthStorage() {
+    if (window.C2) window.C2.disconnectEventStream();
     authToken = null;
     authTokenExpiry = null;
     authUser = null;
@@ -184,7 +190,7 @@ async function ensureAuthenticated() {
     if (isTokenValid()) {
         return true;
     }
-    showLoginOverlay();
+    showLoginOverlay(document.getElementById('login-error')?.textContent || '');
     await ensureAuthPromise();
     return true;
 }
