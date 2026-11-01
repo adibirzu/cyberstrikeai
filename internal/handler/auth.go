@@ -124,11 +124,17 @@ func (h *AuthHandler) SSO(c *gin.Context) {
 	identity, err := h.accessSSO.Verify(c.Request.Context(), strings.TrimSpace(c.GetHeader("Cf-Access-Jwt-Assertion")))
 	headerEmail := strings.ToLower(strings.TrimSpace(c.GetHeader("Cf-Access-Authenticated-User-Email")))
 	if err != nil || (headerEmail != "" && headerEmail != identity.Email) {
+		if h.audit != nil {
+			h.audit.Record(c, audit.Entry{Category: "auth", Action: "login", Result: "failure", Message: "Organization SSO assertion rejected"})
+		}
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Your organization sign-in could not be verified. Reopen the application from Pentforge."})
 		return
 	}
 	token, expiresAt, err := h.manager.StartSession(identity.Username)
 	if err != nil {
+		if h.audit != nil {
+			h.audit.Record(c, audit.Entry{Category: "auth", Action: "login", Result: "failure", Actor: identity.Username, Message: "Organization identity has no enabled native account"})
+		}
 		c.JSON(http.StatusForbidden, gin.H{"error": "Your identity is verified, but CyberStrikeAI access has not been assigned. Contact your administrator."})
 		return
 	}
@@ -136,6 +142,9 @@ func (h *AuthHandler) SSO(c *gin.Context) {
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Sign-in session unavailable"})
 		return
+	}
+	if h.audit != nil {
+		h.audit.Record(c, audit.Entry{Category: "auth", Action: "login", Result: "success", Actor: session.Username, SessionHint: audit.HintFromToken(token), Message: "Organization SSO verified", Detail: map[string]interface{}{"method": "cloudflare_access", "expires_at": expiresAt.UTC().Format(time.RFC3339)}})
 	}
 	c.JSON(http.StatusOK, gin.H{"token": token, "expires_at": expiresAt.UTC().Format(time.RFC3339), "session_duration_hr": h.manager.SessionDurationHours(), "user": gin.H{"id": session.UserID, "username": session.Username, "display_name": session.DisplayName}, "roles": session.Roles, "permissions": permissionKeys(session.Permissions), "permission_scopes": session.PermissionScopes, "scope": session.Scope})
 }

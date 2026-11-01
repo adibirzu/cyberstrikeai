@@ -968,9 +968,10 @@ func setupRoutes(
 	// 认证相关路由
 	authRoutes := api.Group("/auth")
 	loginRL := security.NewRateLimiter(10, 1*time.Minute)
+	ssoRL := security.NewRateLimiter(30, 1*time.Minute)
 	{
 		authRoutes.POST("/login", security.RateLimitMiddleware(loginRL), authHandler.Login)
-		authRoutes.POST("/sso", security.RateLimitMiddleware(loginRL), authHandler.SSO)
+		authRoutes.POST("/sso", security.RateLimitMiddleware(ssoRL), authHandler.SSO)
 		authRoutes.GET("/methods", authHandler.SignInMethods)
 		authRoutes.POST("/logout", security.AuthMiddleware(authManager), authHandler.Logout)
 		authRoutes.POST("/change-password", security.AuthMiddleware(authManager), security.RequirePermission("auth:self"), authHandler.ChangePassword)

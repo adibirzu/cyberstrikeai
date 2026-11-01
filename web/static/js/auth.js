@@ -1,6 +1,14 @@
 const AUTH_STORAGE_KEY = 'cyberstrike-auth';
 let authToken = null;
 let accessSsoOnly = false;
+let accessSsoEnabled = false;
+let initialAuthenticationPending = true;
+let resolveInitialAuthentication;
+const initialAuthentication = new Promise(resolve => { resolveInitialAuthentication = resolve; });
+function completeInitialAuthentication() {
+    initialAuthenticationPending = false;
+    resolveInitialAuthentication();
+}
 let authTokenExpiry = null;
 let authUser = null;
 let authRoles = [];
@@ -132,6 +140,7 @@ function showLoginOverlay(message = '') {
         }
     }
     setTimeout(function () {
+        if (accessSsoOnly) { document.getElementById('organization-sso-link')?.focus(); return; }
         if (usernameInput && !usernameInput.value) {
             usernameInput.focus();
         } else if (passwordInput) {
@@ -171,6 +180,7 @@ function ensureAuthPromise() {
 }
 
 async function ensureAuthenticated() {
+    if (initialAuthenticationPending) await initialAuthentication;
     if (isTokenValid()) {
         return true;
     }
@@ -281,7 +291,7 @@ async function submitLogin(event) {
     const usernameInput = document.getElementById('login-username');
     const passwordInput = document.getElementById('login-password');
     const errorBox = document.getElementById('login-error');
-    const submitBtn = document.querySelector('.login-submit');
+    const submitBtn = document.querySelector('#login-form .login-submit');
 
     [usernameInput, passwordInput].forEach(input => input && input.setAttribute('aria-invalid', 'false'));
 
@@ -732,63 +742,65 @@ function setupLoginUI() {
 }
 
 async function initializeApp() {
+    const hasStoredAuth = loadAuthFromStorage();
+    setupLoginUI();
     try {
         const methodsResponse = await fetch('/api/auth/methods', {cache:'no-store'});
-        if (methodsResponse.ok) {
-            const methods = await methodsResponse.json();
-            accessSsoOnly = methods.sso_only === true;
-            const form = document.getElementById('login-form');
-            if (form) { form.hidden = accessSsoOnly; if (accessSsoOnly) form.style.display = 'none'; }
-            const description = document.querySelector('[data-i18n="login.subtitle"]');
-            if (description && accessSsoOnly) description.textContent = 'Use your organization sign-in. Application access is assigned separately.';
+        if (!methodsResponse.ok) throw new Error('Sign-in methods unavailable');
+        const methods = await methodsResponse.json();
+        accessSsoOnly = methods.sso_only === true;
+        accessSsoEnabled = methods.access_sso === true;
+        const form = document.getElementById('login-form');
+        if (form) { form.hidden = accessSsoOnly; form.style.display = accessSsoOnly ? 'none' : ''; }
+        const ssoLink = document.getElementById('organization-sso-link');
+        if (ssoLink) ssoLink.style.display = accessSsoEnabled || accessSsoOnly ? 'flex' : 'none';
+        const description = document.querySelector('[data-i18n="login.subtitle"]');
+        if (description && accessSsoOnly) {
+            description.removeAttribute('data-i18n');
+            description.textContent = 'Use your organization sign-in. Application access is assigned separately.';
         }
-    } catch (_) { /* The server still enforces its sign-in policy. */ }
-    setupLoginUI();
-    const hasStoredAuth = loadAuthFromStorage();
-    if (hasStoredAuth && isTokenValid()) {
-        try {
-            const response = await apiFetch('/api/auth/validate', {
-                method: 'GET',
-            });
+        // Rebind to the current signed Access actor even when a different native session was stored.
+        if (accessSsoEnabled || accessSsoOnly) {
+            if (await tryAccessSso()) return;
+            clearAuthStorage();
+            return;
+        }
+        if (hasStoredAuth && isTokenValid()) {
+            const response = await fetch('/api/auth/validate', {headers:{Authorization:`Bearer ${authToken}`}});
             if (response.ok) {
-                const result = await response.json().catch(() => ({}));
+                const result = await response.json();
                 saveAuth(result.token || authToken, result.expires_at || authTokenExpiry, {
-                    user: result.user || authUser,
-                    roles: result.roles || authRoles,
-                    permissions: result.permissions || Array.from(authPermissions),
-                    scope: result.scope || authScope,
+                    user: result.user || authUser, roles: result.roles || authRoles,
+                    permissions: result.permissions || Array.from(authPermissions), scope: result.scope || authScope,
                 });
                 hideLoginOverlay();
                 applyRBACToUI();
                 resolveAuthPromises(true);
+                completeInitialAuthentication();
                 await bootstrapApp();
                 return;
             }
-        } catch (error) {
-            console.warn('本地会话已失效，需重新登录');
         }
+        clearAuthStorage();
+        showLoginOverlay();
+    } catch (_) {
+        clearAuthStorage();
+        showLoginOverlay('Sign-in is temporarily unavailable. Reload the page to retry.');
+    } finally {
+        completeInitialAuthentication();
     }
-
-    const signedInWithAccess = await tryAccessSso();
-    if (signedInWithAccess) {
-        return;
-    }
-    clearAuthStorage();
-    if (!accessSsoOnly) showLoginOverlay();
 }
 
 async function tryAccessSso() {
     try {
         const response = await fetch('/api/auth/sso', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
         if (!response.ok) {
-            if (accessSsoOnly) {
-                const failure = await response.json().catch(() => ({}));
-                showLoginOverlay(failure.error || 'Your organization sign-in is unavailable. Reopen the application from Pentforge.');
-            }
+            const failure = await response.json().catch(() => ({}));
+            showLoginOverlay(failure.error || 'Your organization sign-in is unavailable. Reopen the application from Pentforge.');
             return false;
         }
         const result = await response.json();
-        if (!result.token) return false;
+        if (!result.token) throw new Error('Session unavailable');
         saveAuth(result.token, result.expires_at, {
             user: result.user,
             roles: result.roles,
@@ -798,9 +810,11 @@ async function tryAccessSso() {
         hideLoginOverlay();
         applyRBACToUI();
         resolveAuthPromises(true);
+        completeInitialAuthentication();
         await bootstrapApp();
         return true;
     } catch (error) {
+        showLoginOverlay('Your organization sign-in is unavailable. Reload the page to retry.');
         return false;
     }
 }

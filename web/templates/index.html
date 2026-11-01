@@ -60,7 +60,8 @@
                 </h2>
                 <p class="login-subtitle" data-i18n="login.subtitle">Use Google or the local account. Google uses the same sign-in as Pentforge.</p>
             </div>
-            <a class="btn-secondary login-submit" href="https://pentforge.cloudflareaccess.com/cdn-cgi/access/login/cyberstrike.pentforge.app" style="display:flex;justify-content:center;margin-bottom:12px;text-decoration:none;">Continue with organization SSO</a>
+            <div id="login-error" class="login-error" role="alert" style="display: none;"></div>
+            <a id="organization-sso-link" class="btn-secondary" href="https://pentforge.cloudflareaccess.com/cdn-cgi/access/login/cyberstrike.pentforge.app" style="display:none;justify-content:center;margin-bottom:12px;text-decoration:none;">Continue with organization SSO</a>
             <form id="login-form" class="login-form" novalidate>
                 <div class="form-group">
                     <label for="login-username" data-i18n="login.usernameLabel">Username</label>
@@ -81,7 +82,6 @@
                         </button>
                     </div>
                 </div>
-                <div id="login-error" class="login-error" role="alert" style="display: none;"></div>
                 <button type="submit" class="btn-primary login-submit">
                     <span data-i18n="login.submit">Sign in with local account</span>
                 </button>
@@ -7017,7 +7017,7 @@
     <script src="/static/js/i18n.js"></script>
     <script src="/static/js/theme.js"></script>
     <script src="/static/js/builtin-tools.js"></script>
-    <script src="/static/js/auth.js?v=20261008-password-eye-1"></script>
+    <script src="/static/js/auth.js?v=20261101-access-sso-2"></script>
     <script src="/static/js/modal.js"></script>
     <script src="/static/js/notifications.js"></script>
     <script src="/static/js/info-collect.js?v=20260717-1"></script>
@@ -7045,7 +7045,7 @@
     <script src="/static/js/fact-graph.js"></script>
     <script src="/static/js/projects.js?v=20260819-1-pagination-20261027"></script>
     <script src="/static/js/vulnerability.js?v=20261010-retest-2-pagination-20261027"></script>
-    <script src="/static/js/webshell.js?v=20261011-token-usage"></script>
+    <script src="/static/js/webshell.js?v=20261101-probe-fix-1"></script>
     <script src="/static/js/chat-files.js?v=20261027-pagination-custom-select"></script>
     <script src="/static/js/tasks.js?v=20261027-pagination-custom-select"></script>
     <script src="/static/js/workflow-package-client.js"></script>
