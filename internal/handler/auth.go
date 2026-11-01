@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -23,6 +21,7 @@ type AuthHandler struct {
 	configPath string
 	logger     *zap.Logger
 	audit      *audit.Service
+	accessSSO  *security.AccessSSO
 }
 
 // SetAudit wires platform audit logging.
@@ -34,6 +33,7 @@ func (h *AuthHandler) SetAudit(s *audit.Service) {
 func NewAuthHandler(manager *security.AuthManager, cfg *config.Config, configPath string, logger *zap.Logger) *AuthHandler {
 	return &AuthHandler{
 		manager:    manager,
+		accessSSO:  security.AccessSSOFromEnv(),
 		config:     cfg,
 		configPath: configPath,
 		logger:     logger,
@@ -52,6 +52,10 @@ type changePasswordRequest struct {
 
 // Login verifies password and returns a session token.
 func (h *AuthHandler) Login(c *gin.Context) {
+	if security.AccessSSOOnly() {
+		c.JSON(http.StatusGone, gin.H{"error": "Use your verified organization sign-in"})
+		return
+	}
 	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Password is required"})
@@ -110,58 +114,36 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	})
 }
 
-func accessAssertionMatches(token, email string) bool {
-	parts := strings.Split(token, ".")
-	if len(parts) != 3 || email == "" {
-		return false
+// SSO exchanges a cryptographically verified Access identity for its existing native RBAC session.
+func (h *AuthHandler) SSO(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	if origin := c.GetHeader("Origin"); origin != "" && origin != "https://cyberstrike.pentforge.app" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Invalid sign-in origin"})
+		return
 	}
-	raw, err := base64.RawURLEncoding.DecodeString(parts[1])
+	identity, err := h.accessSSO.Verify(c.Request.Context(), strings.TrimSpace(c.GetHeader("Cf-Access-Jwt-Assertion")))
+	headerEmail := strings.ToLower(strings.TrimSpace(c.GetHeader("Cf-Access-Authenticated-User-Email")))
+	if err != nil || (headerEmail != "" && headerEmail != identity.Email) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Your organization sign-in could not be verified. Reopen the application from Pentforge."})
+		return
+	}
+	token, expiresAt, err := h.manager.StartSession(identity.Username)
 	if err != nil {
-		return false
+		c.JSON(http.StatusForbidden, gin.H{"error": "Your identity is verified, but CyberStrikeAI access has not been assigned. Contact your administrator."})
+		return
 	}
-	var claims struct {
-		Email string `json:"email"`
-		Exp   int64  `json:"exp"`
+	session, ok := h.manager.ValidateToken(token)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Sign-in session unavailable"})
+		return
 	}
-	if err := json.Unmarshal(raw, &claims); err != nil {
-		return false
-	}
-	return strings.EqualFold(strings.TrimSpace(claims.Email), email) && claims.Exp > time.Now().Unix()
+	c.JSON(http.StatusOK, gin.H{"token": token, "expires_at": expiresAt.UTC().Format(time.RFC3339), "session_duration_hr": h.manager.SessionDurationHours(), "user": gin.H{"id": session.UserID, "username": session.Username, "display_name": session.DisplayName}, "roles": session.Roles, "permissions": permissionKeys(session.Permissions), "permission_scopes": session.PermissionScopes, "scope": session.Scope})
 }
 
-// SSO accepts a Cloudflare Access email and opens the matching local account.
-func (h *AuthHandler) SSO(c *gin.Context) {
-	email := strings.TrimSpace(strings.ToLower(c.GetHeader("Cf-Access-Authenticated-User-Email")))
-	tokenHeader := strings.TrimSpace(c.GetHeader("Cf-Access-Jwt-Assertion"))
-	if email == "" || !strings.Contains(email, "@") || !accessAssertionMatches(tokenHeader, email) {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Google sign-in is not available for this request"})
-		return
-	}
-	token, expiresAt, err := h.manager.StartSession(email)
-	if err != nil {
-		if at := strings.Index(email, "@"); at > 0 {
-			token, expiresAt, err = h.manager.StartSession(email[:at])
-		}
-	}
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "This Google account is not a local user. Use the local account."})
-		return
-	}
-	session, _ := h.manager.ValidateToken(token)
-	c.JSON(http.StatusOK, gin.H{
-		"token":               token,
-		"expires_at":          expiresAt.UTC().Format(time.RFC3339),
-		"session_duration_hr": h.manager.SessionDurationHours(),
-		"user": gin.H{
-			"id":           session.UserID,
-			"username":     session.Username,
-			"display_name": session.DisplayName,
-		},
-		"roles":             session.Roles,
-		"permissions":       permissionKeys(session.Permissions),
-		"permission_scopes": session.PermissionScopes,
-		"scope":             session.Scope,
-	})
+// SignInMethods contains no users, mappings, secrets or tenant data.
+func (h *AuthHandler) SignInMethods(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	c.JSON(http.StatusOK, gin.H{"access_sso": h.accessSSO != nil, "sso_only": security.AccessSSOOnly()})
 }
 
 // Logout revokes the current session token.

@@ -971,6 +971,7 @@ func setupRoutes(
 	{
 		authRoutes.POST("/login", security.RateLimitMiddleware(loginRL), authHandler.Login)
 		authRoutes.POST("/sso", security.RateLimitMiddleware(loginRL), authHandler.SSO)
+		authRoutes.GET("/methods", authHandler.SignInMethods)
 		authRoutes.POST("/logout", security.AuthMiddleware(authManager), authHandler.Logout)
 		authRoutes.POST("/change-password", security.AuthMiddleware(authManager), security.RequirePermission("auth:self"), authHandler.ChangePassword)
 		authRoutes.GET("/validate", security.AuthMiddleware(authManager), authHandler.Validate)

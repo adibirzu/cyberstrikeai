@@ -1,5 +1,6 @@
 const AUTH_STORAGE_KEY = 'cyberstrike-auth';
 let authToken = null;
+let accessSsoOnly = false;
 let authTokenExpiry = null;
 let authUser = null;
 let authRoles = [];
@@ -731,6 +732,17 @@ function setupLoginUI() {
 }
 
 async function initializeApp() {
+    try {
+        const methodsResponse = await fetch('/api/auth/methods', {cache:'no-store'});
+        if (methodsResponse.ok) {
+            const methods = await methodsResponse.json();
+            accessSsoOnly = methods.sso_only === true;
+            const form = document.getElementById('login-form');
+            if (form) { form.hidden = accessSsoOnly; if (accessSsoOnly) form.style.display = 'none'; }
+            const description = document.querySelector('[data-i18n="login.subtitle"]');
+            if (description && accessSsoOnly) description.textContent = 'Use your organization sign-in. Application access is assigned separately.';
+        }
+    } catch (_) { /* The server still enforces its sign-in policy. */ }
     setupLoginUI();
     const hasStoredAuth = loadAuthFromStorage();
     if (hasStoredAuth && isTokenValid()) {
@@ -757,18 +769,24 @@ async function initializeApp() {
         }
     }
 
-    const signedInWithGoogle = await tryGoogleSso();
-    if (signedInWithGoogle) {
+    const signedInWithAccess = await tryAccessSso();
+    if (signedInWithAccess) {
         return;
     }
     clearAuthStorage();
-    showLoginOverlay();
+    if (!accessSsoOnly) showLoginOverlay();
 }
 
-async function tryGoogleSso() {
+async function tryAccessSso() {
     try {
         const response = await fetch('/api/auth/sso', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-        if (!response.ok) return false;
+        if (!response.ok) {
+            if (accessSsoOnly) {
+                const failure = await response.json().catch(() => ({}));
+                showLoginOverlay(failure.error || 'Your organization sign-in is unavailable. Reopen the application from Pentforge.');
+            }
+            return false;
+        }
         const result = await response.json();
         if (!result.token) return false;
         saveAuth(result.token, result.expires_at, {
