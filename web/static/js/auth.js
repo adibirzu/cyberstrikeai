@@ -757,8 +757,34 @@ async function initializeApp() {
         }
     }
 
+    const signedInWithGoogle = await tryGoogleSso();
+    if (signedInWithGoogle) {
+        return;
+    }
     clearAuthStorage();
     showLoginOverlay();
+}
+
+async function tryGoogleSso() {
+    try {
+        const response = await fetch('/api/auth/sso', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        if (!response.ok) return false;
+        const result = await response.json();
+        if (!result.token) return false;
+        saveAuth(result.token, result.expires_at, {
+            user: result.user,
+            roles: result.roles,
+            permissions: result.permissions,
+            scope: result.scope,
+        });
+        hideLoginOverlay();
+        applyRBACToUI();
+        resolveAuthPromises(true);
+        await bootstrapApp();
+        return true;
+    } catch (error) {
+        return false;
+    }
 }
 
 // 用户菜单控制

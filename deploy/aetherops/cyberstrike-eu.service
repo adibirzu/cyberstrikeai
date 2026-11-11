@@ -1,0 +1,19 @@
+[Unit]
+Description=CyberStrikeAI EU node for pentforge.app
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=adi
+Group=adi
+WorkingDirectory=/opt/pentforge/cyberstrike-eu
+EnvironmentFile=/home/adi/aetherops-data/configs/common.env
+ExecStart=/opt/pentforge/cyberstrike-eu/cyberstrike-ai --config /home/adi/aetherops-data/cyberstrike-eu/config.yaml
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

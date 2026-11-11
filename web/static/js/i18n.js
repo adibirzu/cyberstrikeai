@@ -1,6 +1,6 @@
 // 前端国际化初始化（基于 i18next 浏览器版本）
 (function () {
-    const DEFAULT_LANG = 'zh-CN';
+    const DEFAULT_LANG = 'en-US';
     const STORAGE_KEY = 'csai_lang';
     const RESOURCES_PREFIX = '/static/i18n';
 
@@ -32,7 +32,7 @@
         if (navLang.startsWith('en')) {
             return 'en-US';
         }
-        return DEFAULT_LANG;
+        return 'en-US';
     }
 
     async function loadLanguageResources(lang) {

@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -52,12 +54,12 @@ type changePasswordRequest struct {
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "密码不能为空"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Password is required"})
 		return
 	}
 	req.Username = strings.TrimSpace(req.Username)
 	if req.Username == "" || utf8.RuneCountInString(req.Username) > 64 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "用户名不能为空，且不能超过 64 个字符"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Username is required and must be at most 64 characters"})
 		return
 	}
 
@@ -73,7 +75,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 				Actor:    strings.TrimSpace(req.Username),
 			})
 		}
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "密码错误"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
 		return
 	}
 	session, _ := h.manager.ValidateToken(token)
@@ -92,6 +94,60 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		})
 	}
 
+	c.JSON(http.StatusOK, gin.H{
+		"token":               token,
+		"expires_at":          expiresAt.UTC().Format(time.RFC3339),
+		"session_duration_hr": h.manager.SessionDurationHours(),
+		"user": gin.H{
+			"id":           session.UserID,
+			"username":     session.Username,
+			"display_name": session.DisplayName,
+		},
+		"roles":             session.Roles,
+		"permissions":       permissionKeys(session.Permissions),
+		"permission_scopes": session.PermissionScopes,
+		"scope":             session.Scope,
+	})
+}
+
+func accessAssertionMatches(token, email string) bool {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 || email == "" {
+		return false
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return false
+	}
+	var claims struct {
+		Email string `json:"email"`
+		Exp   int64  `json:"exp"`
+	}
+	if err := json.Unmarshal(raw, &claims); err != nil {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(claims.Email), email) && claims.Exp > time.Now().Unix()
+}
+
+// SSO accepts a Cloudflare Access email and opens the matching local account.
+func (h *AuthHandler) SSO(c *gin.Context) {
+	email := strings.TrimSpace(strings.ToLower(c.GetHeader("Cf-Access-Authenticated-User-Email")))
+	tokenHeader := strings.TrimSpace(c.GetHeader("Cf-Access-Jwt-Assertion"))
+	if email == "" || !strings.Contains(email, "@") || !accessAssertionMatches(tokenHeader, email) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Google sign-in is not available for this request"})
+		return
+	}
+	token, expiresAt, err := h.manager.StartSession(email)
+	if err != nil {
+		if at := strings.Index(email, "@"); at > 0 {
+			token, expiresAt, err = h.manager.StartSession(email[:at])
+		}
+	}
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "This Google account is not a local user. Use the local account."})
+		return
+	}
+	session, _ := h.manager.ValidateToken(token)
 	c.JSON(http.StatusOK, gin.H{
 		"token":               token,
 		"expires_at":          expiresAt.UTC().Format(time.RFC3339),
@@ -129,14 +185,14 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 			Message:  "退出登录",
 		})
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "已退出登录"})
+	c.JSON(http.StatusOK, gin.H{"message": "Signed out"})
 }
 
 // ChangePassword updates the login password.
 func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	var req changePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "参数无效"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid password change"})
 		return
 	}
 
@@ -144,17 +200,17 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	newPassword := strings.TrimSpace(req.NewPassword)
 
 	if oldPassword == "" || newPassword == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "当前密码和新密码均不能为空"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Current password and new password are required"})
 		return
 	}
 
 	if len(newPassword) < 8 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "新密码长度至少需要 8 位"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "New password must be at least 8 characters"})
 		return
 	}
 
 	if oldPassword == newPassword {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "新密码不能与旧密码相同"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "New password must be different from the current password"})
 		return
 	}
 
@@ -172,7 +228,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 				Message:  "修改密码失败：当前密码不正确",
 			})
 		}
-		c.JSON(http.StatusBadRequest, gin.H{"error": "当前密码不正确"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Current password is incorrect"})
 		return
 	}
 
@@ -183,7 +239,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 		if h.logger != nil {
 			h.logger.Error("更新用户密码失败", zap.Error(err))
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新用户密码失败"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update the password"})
 		return
 	}
 
@@ -200,20 +256,20 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "密码已更新，请使用新密码重新登录"})
+	c.JSON(http.StatusOK, gin.H{"message": "Password updated. Sign in again with the new password."})
 }
 
 // Validate returns the current session status.
 func (h *AuthHandler) Validate(c *gin.Context) {
 	token := c.GetString(security.ContextAuthTokenKey)
 	if token == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "会话无效"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Sign in required"})
 		return
 	}
 
 	session, ok := h.manager.ValidateToken(token)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "会话已过期"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Session expired"})
 		return
 	}
 
