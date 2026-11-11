@@ -777,7 +777,7 @@ async function submitFofaSearch() {
         }
         renderFofaResults(result);
     } catch (e) {
-        console.error(providerLabel(provider) + ' _Other Organiser', e);
+        console.error(providerLabel(provider) + ' query failed:', e);
         setFofaMeta(_t('infoCollect.queryFailed'));
         renderFofaResults({ provider, query, fields: [], results: [], total: 0, page: 1, size: 0 });
         alert(_t('infoCollect.queryFailed') + ': ' + (e && e.message ? e.message : String(e)));

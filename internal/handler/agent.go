@@ -592,7 +592,7 @@ func saveAttachmentsToDateAndConversationDir(attachments []ChatAttachment, conve
 			}
 			savedPaths = append(savedPaths, finalPath)
 			if logger != nil {
-				logger.Debug("_Other Organiser", zap.Int("index", i+1), zap.String("fileName", a.FileName), zap.String("path", finalPath))
+				logger.Debug("Conversation attachment uses uploaded path", zap.Int("index", i+1), zap.String("fileName", a.FileName), zap.String("path", finalPath))
 			}
 			continue
 		}
@@ -1900,7 +1900,7 @@ func (h *AgentHandler) CreateBatchQueue(c *gin.Context) {
 	}
 
 	if len(req.Tasks) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "_Other Organiser"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Task list must not be empty"})
 		return
 	}
 

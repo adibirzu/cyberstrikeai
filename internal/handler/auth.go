@@ -130,7 +130,7 @@ func (h *AuthHandler) SSO(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Your organization sign-in could not be verified. Reopen the application from Pentforge."})
 		return
 	}
-	token, expiresAt, err := h.manager.StartSession(identity.Username)
+	token, expiresAt, err := h.manager.StartSessionUntil(identity.Username, identity.ExpiresAt)
 	if err != nil {
 		if h.audit != nil {
 			h.audit.Record(c, audit.Entry{Category: "auth", Action: "login", Result: "failure", Actor: identity.Username, Message: "Organization identity has no enabled native account"})

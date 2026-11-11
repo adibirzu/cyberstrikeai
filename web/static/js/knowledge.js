@@ -568,7 +568,7 @@ async function updateIndexProgress() {
                 <div class="knowledge-index-progress">
                     <div class="progress-header">
                         <span class="progress-icon">🔨</span>
-                        <span class="progress-text">Building Index: ${rebuildCurrent}/${rebuildTotal} (${rebuildProgress.toFixed(1)}_Other Organiser - Failed:${rebuildFailed}</span>
+                        <span class="progress-text">Building Index: ${rebuildCurrent}/${rebuildTotal} (${rebuildProgress.toFixed(1)}%) - Failed:${rebuildFailed}</span>
                     </div>
                     <div class="progress-bar-container">
                         <div class="progress-bar" style="width: ${rebuildProgress}%"></div>

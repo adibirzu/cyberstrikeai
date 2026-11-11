@@ -275,12 +275,7 @@ func RunDeepAgent(
 					ToolsNodeConfig: compose.ToolsNodeConfig{
 						Tools:               subToolsForCfg,
 						UnknownToolsHandler: einomcp.UnknownToolReminderHandler(),
-						ToolCallMiddlewares: []compose.ToolMiddleware{
-							modelOutputExecutionGuardMiddleware(),
-							localToolRBACMiddleware(),
-							hitlToolCallMiddleware(),
-							softRecoveryToolMiddleware(),
-						},
+						ToolCallMiddlewares: nativeToolCallMiddlewares(appCfg, ag),
 					},
 					EmitInternalEvents: true,
 				},
@@ -455,12 +450,7 @@ func RunDeepAgent(
 		ToolsNodeConfig: compose.ToolsNodeConfig{
 			Tools:               mainToolsForCfg,
 			UnknownToolsHandler: einomcp.UnknownToolReminderHandler(),
-			ToolCallMiddlewares: []compose.ToolMiddleware{
-				modelOutputExecutionGuardMiddleware(),
-				localToolRBACMiddleware(),
-				hitlToolCallMiddleware(),
-				softRecoveryToolMiddleware(),
-			},
+			ToolCallMiddlewares: nativeToolCallMiddlewares(appCfg, ag),
 		},
 		EmitInternalEvents: true,
 	}

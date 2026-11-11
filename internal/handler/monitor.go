@@ -623,12 +623,12 @@ func (h *MonitorHandler) CancelExecution(c *gin.Context) {
 	}
 	if h.mcpServer.CancelToolExecutionWithNote(id, note) {
 		h.logger.Info("Canceled MCP tool execution requested", zap.String("executionId", id), zap.String("source", "internal"), zap.Bool("hasNote", note != ""))
-		c.JSON(http.StatusOK, gin.H{"message": "_Other Organiser", "executionId": id})
+		c.JSON(http.StatusOK, gin.H{"message": "Termination signal sent", "executionId": id})
 		return
 	}
 	if h.externalMCPMgr != nil && h.externalMCPMgr.CancelToolExecutionWithNote(id, note) {
 		h.logger.Info("Canceled MCP tool execution requested", zap.String("executionId", id), zap.String("source", "external"), zap.Bool("hasNote", note != ""))
-		c.JSON(http.StatusOK, gin.H{"message": "_Other Organiser", "executionId": id})
+		c.JSON(http.StatusOK, gin.H{"message": "Termination signal sent", "executionId": id})
 		return
 	}
 	c.JSON(http.StatusNotFound, gin.H{"error": "No ongoing tools were found for implementation or the mission was terminated"})

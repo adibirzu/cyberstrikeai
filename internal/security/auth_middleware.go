@@ -41,7 +41,9 @@ func AuthMiddleware(manager *AuthManager) gin.HandlerFunc {
 		// Attach an immutable principal to the request context as the canonical
 		// identity for every downstream execution layer.
 		principal := authctx.NewPrincipalWithScopes(session.UserID, session.Username, session.Scope, session.Permissions, session.PermissionScopes)
-		c.Request = c.Request.WithContext(authctx.WithPrincipal(c.Request.Context(), principal))
+		ctx := authctx.WithPrincipal(c.Request.Context(), principal)
+		ctx = withSessionLease(ctx, session.ExpiresAt, func() bool { return manager.liveSessionValid(session) })
+		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
 }

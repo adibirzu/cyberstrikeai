@@ -146,12 +146,7 @@ func RunEinoSingleChatModelAgent(
 		ToolsNodeConfig: compose.ToolsNodeConfig{
 			Tools:               mainToolsForCfg,
 			UnknownToolsHandler: einomcp.UnknownToolReminderHandler(),
-			ToolCallMiddlewares: []compose.ToolMiddleware{
-				modelOutputExecutionGuardMiddleware(),
-				localToolRBACMiddleware(),
-				hitlToolCallMiddleware(),
-				softRecoveryToolMiddleware(),
-			},
+			ToolCallMiddlewares: nativeToolCallMiddlewares(appCfg, ag),
 		},
 		EmitInternalEvents: true,
 	}

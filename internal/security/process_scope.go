@@ -179,12 +179,15 @@ func waitShellSessions(sessions []*ShellSession, timeout time.Duration) bool {
 // StartManagedBackground returns promptly while retaining task ownership. The
 // shell executes the job in the foreground internally, keeping a waitable root
 // alive; tool completion must not cancel the job's lifetime.
-func StartManagedBackground(ctx context.Context, shell, command, dir string) (*ShellSession, error) {
+func StartManagedBackground(ctx context.Context, shell, command, dir string, environment ...[]string) (*ShellSession, error) {
 	if ProcessScopeFromContext(ctx) == nil {
 		return nil, ErrBackgroundNeedsTask
 	}
 	cmd := exec.Command(shell, "-c", PrepareShellCommandForExecute(command))
 	cmd.Dir = dir
+	if len(environment) > 0 {
+		cmd.Env = environment[0]
+	}
 	ConfigureShellCmdForAgentExecute(cmd)
 	// Nil output streams use /dev/null; background output cannot hold tool pipes.
 	session, err := StartShellSessionContext(ctx, cmd)

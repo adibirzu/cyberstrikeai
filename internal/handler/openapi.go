@@ -278,7 +278,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 						},
 						"executionResults": map[string]interface{}{
 							"type":        "array",
-							"description": "_Other Organiser",
+							"description": "Execution results",
 							"items": map[string]interface{}{
 								"$ref": "#/components/schemas/ExecutionResult",
 							},
@@ -466,7 +466,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 						},
 						"tasks": map[string]interface{}{
 							"type":        "array",
-							"description": "_Other Organiser",
+							"description": "Task list, one task per line",
 							"items": map[string]interface{}{
 								"type": "string",
 							},
@@ -1841,7 +1841,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 										"properties": map[string]interface{}{
 											"tasks": map[string]interface{}{
 												"type":        "array",
-												"description": "_Other Organiser",
+												"description": "Completed tasks",
 												"items": map[string]interface{}{
 													"$ref": "#/components/schemas/AgentTask",
 												},
@@ -3365,7 +3365,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 					},
 					"responses": map[string]interface{}{
 						"200": map[string]interface{}{
-							"description": "_Other Organiser",
+							"description": "Termination signal sent",
 						},
 						"400": map[string]interface{}{
 							"description": "Request is not legal, JSON.",

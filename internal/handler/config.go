@@ -1573,7 +1573,7 @@ func (h *ConfigHandler) TestVision(c *gin.Context) {
 	}
 	oa := req.Vision.OpenAICfgEffective(req.OpenAI)
 	if strings.TrimSpace(oa.APIKey) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "API Key Can't be empty. (_Other Organiser vision.api_key or openai.api_key) "})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "API key is required (set vision.api_key or openai.api_key)"})
 		return
 	}
 	if strings.TrimSpace(oa.Model) == "" {

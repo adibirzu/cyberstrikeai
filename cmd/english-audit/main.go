@@ -100,6 +100,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	if err := auditRejectedPhrases(root); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	if err := auditSource(root); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

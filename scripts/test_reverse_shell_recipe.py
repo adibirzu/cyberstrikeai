@@ -44,11 +44,17 @@ class ReverseShellBindTest(unittest.TestCase):
             self.module.reverse_shell_start_listener(4444)
         self.assertEqual(self.bound, [('127.0.0.1', 4444)])
     def test_explicit_operator_interface_and_wildcard_remain_supported(self):
-        self.module.reverse_shell_start_listener(4444, '0.0.0.0')
-        self.module.reverse_shell_start_listener(4445, '192.0.2.7')
+        with mock.patch.dict(self.module.os.environ, {'REVERSE_SHELL_ALLOW_NON_LOOPBACK':'true'}, clear=True):
+            self.module.reverse_shell_start_listener(4444, '0.0.0.0')
+            self.module.reverse_shell_start_listener(4445, '192.0.2.7')
         self.assertEqual(self.bound, [('0.0.0.0', 4444), ('192.0.2.7', 4445)])
+    def test_model_argument_cannot_opt_in_to_network_exposure(self):
+        with mock.patch.dict(self.module.os.environ, {}, clear=True):
+            for host in ['0.0.0.0', '192.0.2.7']:
+                self.assertIn('requires operator opt-in', self.module.reverse_shell_start_listener(4444, host))
+        self.assertEqual(self.bound, [])
     def test_configured_interface_and_invalid_input(self):
-        with mock.patch.dict(self.module.os.environ, {'REVERSE_SHELL_BIND_HOST':'192.0.2.8'}, clear=True):
+        with mock.patch.dict(self.module.os.environ, {'REVERSE_SHELL_BIND_HOST':'192.0.2.8', 'REVERSE_SHELL_ALLOW_NON_LOOPBACK':'true'}, clear=True):
             self.module.reverse_shell_start_listener(4444)
         self.assertEqual(self.bound, [('192.0.2.8', 4444)])
         result = self.module.reverse_shell_start_listener(4444, 'host.invalid; widen scope')

@@ -309,20 +309,14 @@ func auditAgentPickObject(m map[string]interface{}, keys ...string) map[string]i
 }
 
 func normalizeAuditAgentDecision(v string) string {
-	d := strings.ToLower(strings.TrimSpace(legacytext.AuditDecision(v)))
-	switch d {
-	case "approve", "approved", "pass", "passed", "allow", "allowed", "yes", "ok", "accept", "accepted":
-		return "approve"
-	case "reject", "rejected", "deny", "denied", "no", "block", "blocked", "refuse", "refused":
-		return "reject"
+	// Exact canonical decisions plus the finite historical input aliases only.
+	// This parser is used only on the configured trusted audit backend's result.
+	switch decision := legacytext.AuditDecision(strings.TrimSpace(v)); decision {
+	case "approve", "reject":
+		return decision
+	default:
+		return ""
 	}
-	switch strings.TrimSpace(v) {
-	case "Valid", "Approval", "Allow", "Agreed.", "Let go!":
-		return "approve"
-	case "Reject", "Overruled.", "Ban", "Rejected":
-		return "reject"
-	}
-	return ""
 }
 
 type hitlAuditStrategyReq struct {

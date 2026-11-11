@@ -10634,8 +10634,8 @@ async function pinConversation() {
         notifyConversationPinnedChanged(convId, newPinned);
         loadConversations();
     } catch (error) {
-        console.error('_Other Organiser', error);
-        alert('_Other Organiser ' + (error.message || 'Unknown error'));
+        console.error('Failed to pin conversation:', error);
+        alert('Failed to pin conversation: ' + (error.message || 'Unknown error'));
     }
 
 }

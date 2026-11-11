@@ -617,7 +617,7 @@ func (h *RobotHandler) cmdBindProject(platform, userID, idOrName string) string 
 		return "Cannot retrieve the current conversation; try again later."
 	}
 	if err := h.db.SetConversationProjectID(convID, p.ID); err != nil {
-		return "_Other Organiser " + err.Error()
+		return "Binding failed: " + err.Error()
 	}
 	return fmt.Sprintf("Current dialogue bound to item: %s\nID: %s", p.Name, p.ID)
 }
@@ -1032,7 +1032,7 @@ func (h *RobotHandler) executeDelete(platform, userID, convID string) string {
 		return "Unable to start task: " + err.Error()
 	}
 	h.recordRobotCommandAudit(access, platform, "conversation_delete", "conversation", convID, "Robot delete dialogue")
-	return fmt.Sprintf("_Other Organiser ID: %s", convID)
+	return fmt.Sprintf("Deleted conversation ID: %s", convID)
 }
 
 func (h *RobotHandler) cmdVersion() string {

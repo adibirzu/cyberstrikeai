@@ -134,7 +134,14 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 			}
 		}
 		e.logger.Debug("Implement exec tool")
-		return e.executeSystemCommand(ctx, args)
+		var env []string
+		for _, configured := range e.config.Tools {
+			if configured.Name == "exec" {
+				env = childenv.BuildForTool(configured.Env, configured.InheritEnv)
+				break
+			}
+		}
+		return e.executeSystemCommand(ctx, args, env)
 	}
 
 	// 使用索引查找工具配置（O(1) 查找）
@@ -161,6 +168,19 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 			zap.String("command", toolConfig.Command),
 		)
 		return e.executeInternalTool(ctx, toolName, toolConfig.Command, args)
+	}
+
+	// OAST destinations are operator recipe settings, never model-selected overrides.
+	if toolName == "nuclei" {
+		if raw, ok := args["additional_args"].(string); ok {
+			for _, flag := range strings.Fields(raw) {
+				name := strings.SplitN(strings.TrimLeft(flag, "-"), "=", 2)[0]
+				switch name {
+				case "ni", "no-interactsh", "iserver", "interactsh-server", "itoken", "interactsh-token":
+					return nil, fmt.Errorf("nuclei OAST options must be configured in the operator-owned tool recipe")
+				}
+			}
+		}
 	}
 
 	// 构建命令 - 根据工具类型使用不同的参数格式
@@ -191,6 +211,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 
 	// 执行命令
 	cmd := exec.CommandContext(ctx, toolConfig.Command, cmdArgs...)
+	cmd.Env = childenv.BuildForTool(toolConfig.Env, toolConfig.InheritEnv)
 	applyDefaultTerminalEnv(cmd)
 	attachNonInteractiveStdin(cmd)
 	_ = prepareShellCmdSession(cmd)
@@ -212,6 +233,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 				zap.String("tool", toolName),
 			)
 			cmd2 := exec.CommandContext(ctx, toolConfig.Command, cmdArgs...)
+			cmd2.Env = childenv.BuildForTool(toolConfig.Env, toolConfig.InheritEnv)
 			applyDefaultTerminalEnv(cmd2)
 			_ = prepareShellCmdSession(cmd2)
 			output, err = runCommandWithPTY(ctx, cmd2, cb, e.toolOutputMaxBytes, spill)
@@ -224,6 +246,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 				zap.String("tool", toolName),
 			)
 			cmd2 := exec.CommandContext(ctx, toolConfig.Command, cmdArgs...)
+			cmd2.Env = childenv.BuildForTool(toolConfig.Env, toolConfig.InheritEnv)
 			applyDefaultTerminalEnv(cmd2)
 			_ = prepareShellCmdSession(cmd2)
 			output, err = runCommandWithPTY(ctx, cmd2, nil, e.toolOutputMaxBytes, spill)
@@ -776,7 +799,7 @@ func IsBackgroundShellCommand(command string) bool {
 }
 
 // executeSystemCommand 执行系统命令
-func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
+func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]interface{}, environment ...[]string) (*mcp.ToolResult, error) {
 	// 获取命令
 	command, ok := args["command"].(string)
 	if !ok {
@@ -833,6 +856,9 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 	} else {
 		cmd = exec.CommandContext(ctx, shell, "-c", command)
 	}
+	if len(environment) > 0 {
+		cmd.Env = environment[0]
+	}
 	ConfigureShellCmdForAgentExecute(cmd)
 
 	// 执行命令
@@ -845,7 +871,7 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 
 	if isBackground {
 		job := strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(command), "&"))
-		session, err := StartManagedBackground(ctx, shell, job, workDir)
+		session, err := StartManagedBackground(ctx, shell, job, workDir, environment...)
 		if err != nil {
 			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: fmt.Sprintf("Background command failed to start: %v", err)}}, IsError: true}, nil
 		}
@@ -866,6 +892,9 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 			if workDir != "" {
 				cmd2.Dir = workDir
 			}
+			if len(environment) > 0 {
+				cmd2.Env = environment[0]
+			}
 			ConfigureShellCmdForAgentExecute(cmd2)
 			output, err = runCommandWithPTY(ctx, cmd2, cb, e.toolOutputMaxBytes, spill)
 		}
@@ -876,6 +905,9 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 			cmd2 := exec.CommandContext(ctx, shell, "-c", command)
 			if workDir != "" {
 				cmd2.Dir = workDir
+			}
+			if len(environment) > 0 {
+				cmd2.Env = environment[0]
 			}
 			ConfigureShellCmdForAgentExecute(cmd2)
 			output, err = runCommandWithPTY(ctx, cmd2, nil, e.toolOutputMaxBytes, spill)

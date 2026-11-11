@@ -1,9 +1,12 @@
 name: "nuclei"
 command: "nuclei"
+args: ["-no-interactsh"]
 enabled: true
 short_description: "Run template-based vulnerability checks"
 description: |
-  Run template-based vulnerability checks.
+  Run template-based vulnerability checks. Public OAST callbacks are disabled by default.
+  An operator can replace the recipe args with an authorized -interactsh-server setting to enable scoped OAST.
+  Model-provided additional_args cannot change OAST configuration.
 
   Use the parameters below to select the target and native options. Additional native arguments are supported where exposed by this recipe.
 parameters:

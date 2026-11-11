@@ -9,7 +9,9 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import shutil
+import stat
 import tempfile
 
 
@@ -25,6 +27,48 @@ def safe(root, relative):
     if path.is_symlink() or not path.resolve().is_relative_to(root.resolve()):
         raise ValueError('symlink/outside-root path refused: '+relative)
     return path
+
+
+def yaml_semantics(node, replacements=None, path=(), ancestors=frozenset()):
+    """Compare YAML values without retaining alias sharing or exposing values."""
+    if node is None:
+        return None
+    if id(node) in ancestors:
+        raise RuntimeError('Cyclic configuration requires manual migration')
+    ancestors = ancestors | {id(node)}
+    replacements = replacements or {}
+    if node.id == 'scalar':
+        return node.tag, replacements.get(path, node.value)
+    if node.id == 'sequence':
+        return node.tag, tuple(yaml_semantics(value, replacements, path+(index,), ancestors)
+                               for index, value in enumerate(node.value))
+    entries = []
+    keys = set()
+    for key, value in node.value:
+        if key.id != 'scalar' or (key.tag, key.value) in keys:
+            raise RuntimeError('Complex or duplicate configuration keys require manual migration')
+        keys.add((key.tag, key.value))
+        entries.append(((key.tag, key.value), yaml_semantics(value, replacements, path+(key.value,), ancestors)))
+    return node.tag, tuple(entries)
+
+
+def scalar_token(value, original):
+    # JSON strings are valid YAML scalars in mappings and sequence items. Keep
+    # the consumed block-scalar separator so the following key stays separate.
+    trailing = re.search(r'(?:\r\n|\r|\n)[ \t]*\Z', original)
+    return json.dumps(value, ensure_ascii=True)+(trailing.group() if trailing else '')
+
+
+def preserve_owner_mode(path, original):
+    current = path.stat(follow_symlinks=False)
+    if hasattr(os, 'chown') and (current.st_uid, current.st_gid) != (original.st_uid, original.st_gid):
+        os.chown(path, original.st_uid, original.st_gid, follow_symlinks=False)
+    os.chmod(path, stat.S_IMODE(original.st_mode))
+
+
+def file_identity(metadata):
+    return (metadata.st_dev, metadata.st_ino, metadata.st_mode, metadata.st_uid,
+            metadata.st_gid, metadata.st_mtime_ns)
 
 
 def main():
@@ -66,12 +110,21 @@ def main():
     config_edits = []
     config_states = []
     config_original = None
+    config_original_bytes = None
+    config_metadata = None
+    config_rendered = None
+    config_replacements = {}
     if manifest.get('config_scalars') and config_path.is_file():
         try:
             import yaml
         except ImportError:
             raise RuntimeError('Config migration requires the pinned developer dependency PyYAML==6.0.3; install it in an isolated environment before retrying') from None
-        config_original = config_path.read_text()
+        config_original_bytes = config_path.read_bytes()
+        config_metadata = config_path.stat(follow_symlinks=False)
+        try:
+            config_original = config_original_bytes.decode('utf-8')
+        except UnicodeError:
+            raise RuntimeError('Configuration must be UTF-8 for automatic migration') from None
         try:
             document = yaml.compose(config_original)
         except yaml.YAMLError:
@@ -98,15 +151,32 @@ def main():
                         state = 'already_english'
                     elif current == entry['original_sha256']:
                         state = 'replace_recognized_default'
-                        prefix = config_original[config_original.rfind('\n', 0, node.start_mark.index)+1:node.start_mark.index]
-                        indent = len(prefix)-len(prefix.lstrip())+2
-                        value = '|\n'+''.join(' '*indent+line+'\n' for line in entry['english_value'].splitlines())
+                        replacement = entry['english_value']
+                        if (not isinstance(replacement, str) or
+                                hashlib.sha256(replacement.encode()).hexdigest() != entry['english_sha256']):
+                            raise RuntimeError('Config replacement differs from reviewed manifest')
+                        config_replacements[tuple(entry['path'])] = replacement
+                        value = scalar_token(replacement, config_original[node.start_mark.index:node.end_mark.index])
                         config_edits.append((node.start_mark.index, node.end_mark.index, value))
                     elif any('\u3400' <= character <= '\u9fff' for character in node.value):
                         state = 'blocked_operator_config'
                     else:
                         state = 'preserved_custom_english'
             config_states.append({'path': entry['path'], 'state': state})
+        if config_edits:
+            ordered = sorted(config_edits)
+            if any(previous[1] > following[0] for previous, following in zip(ordered, ordered[1:])):
+                raise RuntimeError('Overlapping configuration values require manual migration')
+            rendered = config_original
+            for start, end, value in reversed(ordered):
+                rendered = rendered[:start]+value+rendered[end:]
+            try:
+                rendered_document = yaml.compose(rendered)
+            except yaml.YAMLError:
+                raise RuntimeError('Generated configuration is invalid; no files changed') from None
+            if yaml_semantics(rendered_document) != yaml_semantics(document, config_replacements):
+                raise RuntimeError('Configuration migration would change unapproved values; no files changed')
+            config_rendered = rendered.encode('utf-8')
     blocked = [p for p in plans if p['state'].startswith('blocked_')]+[p for p in config_states if p['state'].startswith('blocked_')]
     print(json.dumps({'apply_requested':args.apply,'blocked':len(blocked),
                       'files':[{k:p[k] for k in ['old_path','new_path','state']} for p in plans], 'config_scalars':config_states},indent=2))
@@ -120,25 +190,34 @@ def main():
     backup.mkdir(parents=True, mode=0o700)
     (backup/'plan.json').write_text(json.dumps(plans,indent=2)+'\n')
     if config_edits:
-        if config_path.read_text() != config_original:
+        config_path = safe(install, 'config.yaml')
+        if (config_path.read_bytes() != config_original_bytes or
+                file_identity(config_path.stat(follow_symlinks=False)) != file_identity(config_metadata)):
             raise RuntimeError('Config changed after planning; stopped without replacing it')
         shutil.copy2(config_path, backup/'config.yaml')
-        rendered = config_original
-        for start, end, value in sorted(config_edits, reverse=True):
-            rendered = rendered[:start]+value+rendered[end:]
+        preserve_owner_mode(backup/'config.yaml', config_metadata)
         with tempfile.NamedTemporaryFile(dir=config_path.parent, delete=False) as temporary:
             temp = pathlib.Path(temporary.name)
-            temporary.write(rendered.encode())
-        os.chmod(temp, config_path.stat().st_mode & 0o777)
-        os.replace(temp, config_path)
+            temporary.write(config_rendered)
+        try:
+            preserve_owner_mode(temp, config_metadata)
+            config_path = safe(install, 'config.yaml')
+            if (config_path.read_bytes() != config_original_bytes or
+                    file_identity(config_path.stat(follow_symlinks=False)) != file_identity(config_metadata)):
+                raise RuntimeError('Config changed during staging; stopped without replacing it')
+            os.replace(temp, config_path)
+        finally:
+            temp.unlink(missing_ok=True)
     for entry in plans:
         if entry['state']!='replace_recognized_default':
             continue
         old=safe(install,entry['old_path']);new=safe(install,entry['new_path'])
         if digest(old)!=entry['original_sha256']:
             raise RuntimeError('source changed after planning; stopped before replacing '+entry['old_path'])
+        original_metadata = old.stat(follow_symlinks=False)
         saved=safe(backup,entry['old_path']);saved.parent.mkdir(parents=True,exist_ok=True)
         shutil.copy2(old,saved)
+        preserve_owner_mode(saved, original_metadata)
         new.parent.mkdir(parents=True,exist_ok=True)
         # A same-directory atomic rename keeps each file complete. The backup
         # and plan are retained if a later operation fails; no global rollback
@@ -146,8 +225,8 @@ def main():
         with tempfile.NamedTemporaryFile(dir=new.parent,delete=False) as temporary:
             temp=pathlib.Path(temporary.name)
             temporary.write(safe(source,entry['new_path']).read_bytes())
-        os.chmod(temp,old.stat().st_mode & 0o777)
         try:
+            preserve_owner_mode(temp, original_metadata)
             # Revalidate after staging. Renamed destinations are never replaced:
             # an existing reviewed English copy is reused, while an absent path
             # is created with an exclusive link so a concurrent edit wins.

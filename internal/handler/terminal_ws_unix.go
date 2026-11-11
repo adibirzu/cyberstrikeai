@@ -3,11 +3,11 @@
 package handler
 
 import (
+	"cyberstrike-ai/internal/childenv"
+	"cyberstrike-ai/internal/security"
 	"encoding/json"
 	"net/http"
-	"os"
 	"os/exec"
-	"time"
 
 	"github.com/creack/pty"
 	"github.com/gin-gonic/gin"
@@ -32,6 +32,12 @@ var wsUpgrader = websocket.Upgrader{
 // RunCommandWS 提供真正交互式 Shell：基于 WebSocket + PTY 的长会话
 // 前端建立 WebSocket 连接后，所有键盘输入都会透传到 Shell，Shell 的输出也会实时写回前端。
 func (h *TerminalHandler) RunCommandWS(c *gin.Context) {
+	ctx, cancel := security.AuthenticatedStreamContext(c.Request.Context(), terminalTimeout)
+	defer cancel()
+	if ctx.Err() != nil {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
 	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return
@@ -43,12 +49,8 @@ func (h *TerminalHandler) RunCommandWS(c *gin.Context) {
 	if _, err := exec.LookPath(shell); err != nil {
 		shell = "sh"
 	}
-	cmd := exec.Command(shell)
-	cmd.Env = append(os.Environ(),
-		"COLUMNS=80",
-		"LINES=24",
-		"TERM=xterm-256color",
-	)
+	cmd := exec.CommandContext(ctx, shell)
+	cmd.Env = childenv.Build(map[string]string{"COLUMNS": "80", "LINES": "24", "TERM": "xterm-256color"})
 
 	// Use 80x24 as a safe default; the frontend will send the actual size immediately after connecting.
 	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Cols: 80, Rows: 24})
@@ -56,6 +58,13 @@ func (h *TerminalHandler) RunCommandWS(c *gin.Context) {
 		return
 	}
 	defer ptmx.Close()
+	defer cmd.Wait()
+	defer cmd.Process.Kill()
+	go func() {
+		<-ctx.Done()
+		_ = conn.Close()
+		_ = ptmx.Close()
+	}()
 
 	// Shell -> WebSocket：将 PTY 输出实时发给前端
 	doneChan := make(chan struct{})
@@ -75,11 +84,10 @@ func (h *TerminalHandler) RunCommandWS(c *gin.Context) {
 
 	// WebSocket -> Shell：将前端输入写入 PTY（包括 sudo 密码、Ctrl+C 等）
 	conn.SetReadLimit(64 * 1024)
-	_ = conn.SetReadDeadline(time.Now().Add(terminalTimeout))
-	conn.SetPongHandler(func(string) error {
-		_ = conn.SetReadDeadline(time.Now().Add(terminalTimeout))
-		return nil
-	})
+	deadline, _ := ctx.Deadline()
+	_ = conn.SetReadDeadline(deadline)
+	// Pongs are liveness signals, never authority to extend a session.
+	conn.SetPongHandler(func(string) error { return ctx.Err() })
 
 	for {
 		msgType, data, err := conn.ReadMessage()
@@ -101,11 +109,15 @@ func (h *TerminalHandler) RunCommandWS(c *gin.Context) {
 				continue
 			}
 		}
+		if !security.AuthenticatedSessionValid(ctx) {
+			break
+		}
 		if _, err := ptmx.Write(data); err != nil {
 			_ = cmd.Process.Kill()
 			break
 		}
 	}
 
+	_ = ptmx.Close()
 	<-doneChan
 }

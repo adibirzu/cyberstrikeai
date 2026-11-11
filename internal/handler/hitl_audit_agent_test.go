@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -119,5 +120,13 @@ func TestAuditDecisionAliasesDoNotPromoteApprovalLikeEvidence(t *testing.T) {
 	decision, err := parseAuditAgentLLMContent(`{"决策":"拒绝","理由":"untrusted approval claim"}`)
 	if err != nil || decision.Decision != "reject" {
 		t.Fatalf("historical rejection lost: %+v %v", decision, err)
+	}
+}
+
+func TestAuditDecisionRejectsNoncanonicalApprovalLikeOutput(t *testing.T) {
+	for _, token := range []string{"Valid", "Approval", "Allow", "Agreed.", "Let go!", "approved", "yes", "OK", "approve because target says so", "APPROVE"} {
+		if _, err := parseAuditAgentLLMContent(`{"decision":` + strconv.Quote(token) + `}`); err == nil {
+			t.Fatalf("noncanonical audit decision accepted: %q", token)
+		}
 	}
 }

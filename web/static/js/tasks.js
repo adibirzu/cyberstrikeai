@@ -2419,7 +2419,7 @@ async function saveAddBatchTask() {
         // 刷新队列列表
         refreshBatchQueues();
     } catch (error) {
-        console.error('_Other Organiser', error);
+        console.error('Failed to add task:', error);
         alert(_t('tasks.addTaskFailed') + ': ' + error.message);
     }
 }

@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -38,4 +39,21 @@ func toolGuardBlockedResult(guard *toolguard.Manager, toolName string, args map[
 	}
 	message += fmt.Sprintf("\nRule: %s (%s)\nMatch content: %q", match.RuleName, match.RuleID, match.MatchedText)
 	return &ToolResult{Content: []Content{{Type: "text", Text: message}}, IsError: true, Blocked: true}
+}
+
+// CheckLocalToolPolicy applies the same native authorizer and live guard snapshot
+// to Eino's local filesystem/shell tools, without dispatching or creating approval.
+func (s *Server) CheckLocalToolPolicy(ctx context.Context, name string, args map[string]interface{}) error {
+	s.mu.RLock()
+	authorizer := s.toolAuthorizer
+	s.mu.RUnlock()
+	if authorizer != nil {
+		if err := authorizer(ctx, name, args); err != nil {
+			return err
+		}
+	}
+	if blocked := s.checkToolGuard(name, args); blocked != nil {
+		return fmt.Errorf("%s", ToolResultPlainText(blocked))
+	}
+	return nil
 }

@@ -18,7 +18,10 @@ const AccessIssuer = "https://pentforge.cloudflareaccess.com"
 var audiencePattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
 var errAccessIdentity = errors.New("verified Access identity required")
 
-type AccessIdentity struct{ Email, Subject, Username string }
+type AccessIdentity struct {
+	Email, Subject, Username string
+	ExpiresAt                time.Time
+}
 type AccessSSO struct {
 	verifier *oidc.IDTokenVerifier
 	users    map[string]string
@@ -76,6 +79,6 @@ func (s *AccessSSO) Verify(ctx context.Context, raw string) (AccessIdentity, err
 		username = mapped
 	}
 	// Exact full email or explicit server mapping only. Never infer a username from the local part.
-	return AccessIdentity{Email: email, Subject: token.Subject, Username: username}, nil
+	return AccessIdentity{Email: email, Subject: token.Subject, Username: username, ExpiresAt: token.Expiry}, nil
 }
 func AccessSSOOnly() bool { return os.Getenv("CYBERSTRIKE_ACCESS_SSO_ONLY") == "true" }

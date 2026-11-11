@@ -1609,6 +1609,9 @@ type ToolConfig struct {
 	Parameters       []ParameterConfig `yaml:"parameters,omitempty"`         // 参数定义（可选）
 	ArgMapping       string            `yaml:"arg_mapping,omitempty"`        // 参数映射方式: "auto", "manual", "template"（可选）
 	AllowedExitCodes []int             `yaml:"allowed_exit_codes,omitempty"` // 允许的退出码列表（某些工具在成功时也返回非零退出码）
+	// Values are local operator configuration, never model input or config JSON.
+	Env        map[string]string `yaml:"env,omitempty" json:"-"`
+	InheritEnv []string          `yaml:"inherit_env,omitempty" json:"inherit_env,omitempty"`
 }
 
 // ParameterConfig 参数配置

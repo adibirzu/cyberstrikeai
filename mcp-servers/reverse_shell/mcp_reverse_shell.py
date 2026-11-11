@@ -278,7 +278,7 @@ app = FastMCP(
 
 
 @app.tool(
-    description='Start one TCP reverse-shell listener on the specified port. The target callback must be separately authorized. Defaults to loopback (127.0.0.1). An explicit bind_host or configured REVERSE_SHELL_BIND_HOST can select an authorized IPv4 interface; 0.0.0.0 deliberately exposes all interfaces. Supports one listener/client; plaintext, no implant authentication.',
+    description='Start one TCP reverse-shell listener on the specified port. The target callback must be separately authorized. Defaults to loopback (127.0.0.1). Non-loopback binding requires the operator setting REVERSE_SHELL_ALLOW_NON_LOOPBACK=true. After opt-in, bind_host or REVERSE_SHELL_BIND_HOST selects an authorized IPv4 interface; 0.0.0.0 exposes all interfaces. Supports one listener/client; plaintext, no implant authentication.',
 )
 def reverse_shell_start_listener(port: int, bind_host: str | None = None) -> str:
     """Start reverse shell listener on the given port (e.g. 4444)."""
@@ -289,6 +289,8 @@ def reverse_shell_start_listener(port: int, bind_host: str | None = None) -> str
         host = str(ipaddress.IPv4Address(host))
     except (ipaddress.AddressValueError, TypeError):
         return "bind_host must be an IPv4 interface address (default 127.0.0.1; explicit 0.0.0.0 opts into all interfaces)."
+    if not ipaddress.IPv4Address(host).is_loopback and os.environ.get("REVERSE_SHELL_ALLOW_NON_LOOPBACK") != "true":
+        return "Non-loopback binding requires operator opt-in: REVERSE_SHELL_ALLOW_NON_LOOPBACK=true. The bind_host tool argument alone is not authorization."
     return _start_listener(port, host)
 
 

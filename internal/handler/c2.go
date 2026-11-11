@@ -963,6 +963,12 @@ func (h *C2Handler) DeleteEvents(c *gin.Context) {
 
 // EventStream SSE 实时事件流
 func (h *C2Handler) EventStream(c *gin.Context) {
+	ctx, cancel := security.AuthenticatedStreamContext(c.Request.Context(), 0)
+	defer cancel()
+	if ctx.Err() != nil {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
@@ -979,11 +985,12 @@ func (h *C2Handler) EventStream(c *gin.Context) {
 		levels,
 	)
 	defer h.mgr().EventBus().Unsubscribe(sub.ID)
+	c.Writer.Flush()
 
 	c.Stream(func(w io.Writer) bool {
 		select {
 		case e, ok := <-sub.Ch:
-			if !ok {
+			if !ok || !security.AuthenticatedSessionValid(ctx) {
 				return false
 			}
 			if !h.c2EventAllowed(c, e) {
@@ -992,7 +999,7 @@ func (h *C2Handler) EventStream(c *gin.Context) {
 			data, _ := json.Marshal(e)
 			fmt.Fprintf(w, "data: %s\n\n", data)
 			return true
-		case <-c.Request.Context().Done():
+		case <-ctx.Done():
 			return false
 		}
 	})

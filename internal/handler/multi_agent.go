@@ -538,7 +538,7 @@ func interruptContinueTimelineSummary(note string) string {
 	if note == "" {
 		return "The user chooses to \"interrupt and continue \" without a description; the context has been merged and continued with the default penetration supplement template."
 	}
-	return "_Other Organiser\n\n" + note
+	return "User interruption note (verbatim):\n\n" + note
 }
 
 // formatInterruptContinueUserMessage 将「中断并继续」弹窗中的说明格式化为新一轮 user 消息（渗透场景下强调路径补充与端口复扫）。

@@ -90,6 +90,14 @@ func (a *AuthManager) AttachRBACStore(db *database.DB) (generatedAdminPassword s
 
 // StartSession opens a session for an account that a verified SSO provider already identified.
 func (a *AuthManager) StartSession(username string) (string, time.Time, error) {
+	return a.StartSessionUntil(username, time.Time{})
+}
+
+// StartSessionUntil never extends a verified upstream identity's lifetime.
+func (a *AuthManager) StartSessionUntil(username string, identityExpiry time.Time) (string, time.Time, error) {
+	if !identityExpiry.IsZero() && !time.Now().Before(identityExpiry) {
+		return "", time.Time{}, ErrInvalidPassword
+	}
 	for {
 		a.mu.RLock()
 		version := a.accessVersion
@@ -98,10 +106,34 @@ func (a *AuthManager) StartSession(username string) (string, time.Time, error) {
 		if err != nil {
 			return "", time.Time{}, err
 		}
+		if !identityExpiry.IsZero() && identityExpiry.Before(session.ExpiresAt) {
+			session.ExpiresAt = identityExpiry
+		}
 		if a.publishSession(session, version) {
 			return session.Token, session.ExpiresAt, nil
 		}
 	}
+}
+
+// liveSessionValid checks revocation and mutable account state for long-lived
+// connections. Permissions remain bound to the native session; role/user edits
+// revoke their sessions through the existing accessVersion invalidation paths.
+func (a *AuthManager) liveSessionValid(original Session) bool {
+	current, ok := a.ValidateToken(original.Token)
+	if !ok || current.UserID != original.UserID || !current.ExpiresAt.Equal(original.ExpiresAt) {
+		return false
+	}
+	a.mu.RLock()
+	db := a.db
+	a.mu.RUnlock()
+	if db != nil {
+		user, err := db.GetRBACUserByID(original.UserID)
+		if err != nil || !user.Enabled {
+			return false
+		}
+	}
+	_, ok = a.ValidateToken(original.Token)
+	return ok
 }
 
 func (a *AuthManager) sessionForExistingUser(username string) (Session, error) {

@@ -936,3 +936,15 @@ func extractQuotedToolName(errMsg string) string {
 	}
 	return rest[:end]
 }
+
+// CheckLocalToolPolicy is a policy-only bridge for local Eino tools. It never
+// invokes a tool or interprets model text as a permission or approval.
+func (a *Agent) CheckLocalToolPolicy(ctx context.Context, name string, args map[string]interface{}) error {
+	if a == nil || a.mcpServer == nil {
+		return fmt.Errorf("local tool policy is unavailable")
+	}
+	if name == "execute" {
+		name = "exec"
+	}
+	return a.mcpServer.CheckLocalToolPolicy(ctx, name, args)
+}

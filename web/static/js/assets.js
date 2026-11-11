@@ -958,7 +958,7 @@ async function submitAssetProjectBinding() {
         clearAssetSelection();
         await loadAssets(assetPageState.page);
         if (typeof showInlineToast === 'function') {
-            showInlineToast(assetT('assets.bindProjectDone', `_Other Organiser ${ids.length} Assets`, { count: ids.length }));
+            showInlineToast(assetT('assets.bindProjectDone', `Bound ${ids.length} Assets`, { count: ids.length }));
         }
     } catch (error) {
         alert(assetT('assets.bindProjectFailed', 'Failed to update project binding') + ': ' + error.message);

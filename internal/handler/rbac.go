@@ -263,7 +263,7 @@ func (h *RBACHandler) CreateUser(c *gin.Context) {
 		return
 	}
 	if len(strings.TrimSpace(req.Password)) < 8 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Password length takes at least 8 bits"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Password must contain at least 8 characters"})
 		return
 	}
 	hash, err := security.HashPassword(req.Password)
@@ -315,7 +315,7 @@ func (h *RBACHandler) UpdateUser(c *gin.Context) {
 	}
 	if req.Password != nil && strings.TrimSpace(*req.Password) != "" {
 		if len(strings.TrimSpace(*req.Password)) < 8 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Password length takes at least 8 bits"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Password must contain at least 8 characters"})
 			return
 		}
 		hash, err := security.HashPassword(*req.Password)
